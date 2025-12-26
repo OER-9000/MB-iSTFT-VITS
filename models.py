@@ -1,4 +1,5 @@
 import copy
+import time
 import math
 import torch
 from torch import nn
@@ -15,6 +16,7 @@ from commons import init_weights, get_padding
 from pqmf import PQMF
 from stft import TorchSTFT
 import math
+
 
 
 class StochasticDurationPredictor(nn.Module):
@@ -54,7 +56,7 @@ class StochasticDurationPredictor(nn.Module):
     x = torch.detach(x)
     x = self.pre(x)
     if g is not None:
-      g = torch.detach(g)
+      #g = torch.detach(g)
       x = x + self.cond(g)
     x = self.convs(x, x_mask)
     x = self.proj(x) * x_mask
@@ -121,7 +123,7 @@ class DurationPredictor(nn.Module):
   def forward(self, x, x_mask, g=None):
     x = torch.detach(x)
     if g is not None:
-      g = torch.detach(g)
+      #g = torch.detach(g)
       x = x + self.cond(g)
     x = self.conv_1(x * x_mask)
     x = torch.relu(x)
@@ -265,7 +267,7 @@ class iSTFT_Generator(torch.nn.Module):
         for i in range(len(self.ups)):
             ch = upsample_initial_channel//(2**(i+1))
             for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilation_sizes)):
-                self.resblocks.append(resblock(ch, k, d))
+                self.resblocks.append(resblock(ch, k, d, gin_channels=gin_channels))
 
         self.post_n_fft = self.gen_istft_n_fft
         self.conv_post = weight_norm(Conv1d(ch, self.post_n_fft + 2, 7, 1, padding=3))
@@ -282,9 +284,9 @@ class iSTFT_Generator(torch.nn.Module):
             xs = None
             for j in range(self.num_kernels):
                 if xs is None:
-                    xs = self.resblocks[i*self.num_kernels+j](x)
+                    xs = self.resblocks[i*self.num_kernels+j](x, g=g)
                 else:
-                    xs += self.resblocks[i*self.num_kernels+j](x)
+                    xs += self.resblocks[i*self.num_kernels+j](x, g=g)
             x = xs / self.num_kernels
         x = F.leaky_relu(x)
         x = self.reflection_pad(x)
@@ -292,7 +294,7 @@ class iSTFT_Generator(torch.nn.Module):
         spec = torch.exp(x[:,:self.post_n_fft // 2 + 1, :])
         phase = math.pi*torch.sin(x[:, self.post_n_fft // 2 + 1:, :])
         out = self.stft.inverse(spec, phase).to(x.device)
-        return out, None
+        return out, None, spec, phase
 
     def remove_weight_norm(self):
         print('Removing weight norm...')
@@ -324,7 +326,7 @@ class Multiband_iSTFT_Generator(torch.nn.Module):
         for i in range(len(self.ups)):
             ch = upsample_initial_channel//(2**(i+1))
             for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilation_sizes)):
-                self.resblocks.append(resblock(ch, k, d))
+                self.resblocks.append(resblock(ch, k, d, gin_channels=gin_channels))
 
         self.post_n_fft = gen_istft_n_fft
         self.ups.apply(init_weights)
@@ -353,9 +355,9 @@ class Multiband_iSTFT_Generator(torch.nn.Module):
           xs = None
           for j in range(self.num_kernels):
               if xs is None:
-                  xs = self.resblocks[i*self.num_kernels+j](x)
+                  xs = self.resblocks[i*self.num_kernels+j](x, g=g)
               else:
-                  xs += self.resblocks[i*self.num_kernels+j](x)
+                  xs += self.resblocks[i*self.num_kernels+j](x, g=g)
           x = xs / self.num_kernels
           
       x = F.leaky_relu(x)
@@ -372,7 +374,7 @@ class Multiband_iSTFT_Generator(torch.nn.Module):
 
       y_g_hat = pqmf.synthesis(y_mb_hat)
 
-      return y_g_hat, y_mb_hat
+      return y_g_hat, y_mb_hat, spec, phase
 
     def remove_weight_norm(self):
       print('Removing weight norm...')
@@ -402,7 +404,7 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
         for i in range(len(self.ups)):
             ch = upsample_initial_channel//(2**(i+1))
             for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilation_sizes)):
-                self.resblocks.append(resblock(ch, k, d))
+                self.resblocks.append(resblock(ch, k, d, gin_channels=gin_channels))
 
         self.post_n_fft = gen_istft_n_fft
         self.ups.apply(init_weights)
@@ -441,9 +443,9 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
           xs = None
           for j in range(self.num_kernels):
               if xs is None:
-                  xs = self.resblocks[i*self.num_kernels+j](x)
+                  xs = self.resblocks[i*self.num_kernels+j](x, g=g)
               else:
-                  xs += self.resblocks[i*self.num_kernels+j](x)
+                  xs += self.resblocks[i*self.num_kernels+j](x, g=g)
           x = xs / self.num_kernels
           
       x = F.leaky_relu(x)
@@ -458,11 +460,11 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
       y_mb_hat = torch.reshape(y_mb_hat, (x.shape[0], self.subbands, 1, y_mb_hat.shape[-1]))
       y_mb_hat = y_mb_hat.squeeze(-2)
 
-      y_mb_hat = F.conv_transpose1d(y_mb_hat, self.updown_filter.cuda(x.device) * self.subbands, stride=self.subbands)
+      y_mb_hat = F.conv_transpose1d(y_mb_hat, self.updown_filter.to(x.device) * self.subbands, stride=self.subbands)
 
       y_g_hat = self.multistream_conv_post(y_mb_hat)
 
-      return y_g_hat, y_mb_hat
+      return y_g_hat, y_mb_hat, spec, phase
 
     def remove_weight_norm(self):
       print('Removing weight norm...')
@@ -689,20 +691,29 @@ class SynthesizerTrn(nn.Module):
     logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(1, 2)
 
     z_slice, ids_slice = commons.rand_slice_segments(z, y_lengths, self.segment_size)
-    o, o_mb = self.dec(z_slice, g=g)
+    o, o_mb, _, _ = self.dec(z_slice, g=g)
     return o, o_mb, l_length, attn, ids_slice, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
 
   def infer(self, x, x_lengths, sid=None, noise_scale=1, length_scale=1, noise_scale_w=1., max_len=None):
+    timings = {}
+    
+    start_time = time.time()
     x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
+    timings['text_encoder'] = time.time() - start_time
+
     if self.n_speakers > 0:
       g = self.emb_g(sid).unsqueeze(-1) # [b, h, 1]
     else:
       g = None
 
+    start_time = time.time()
     if self.use_sdp:
       logw = self.dp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)
     else:
       logw = self.dp(x, x_mask, g=g)
+    timings['duration_predictor'] = time.time() - start_time
+
+    start_time = time.time()
     w = torch.exp(logw) * x_mask * length_scale
     w_ceil = torch.ceil(w)
     y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()
@@ -712,11 +723,69 @@ class SynthesizerTrn(nn.Module):
 
     m_p = torch.matmul(attn.squeeze(1), m_p.transpose(1, 2)).transpose(1, 2) # [b, t', t], [b, t, d] -> [b, d, t']
     logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(1, 2) # [b, t', t], [b, t, d] -> [b, d, t']
+    timings['alignment_and_projection'] = time.time() - start_time
 
+    start_time = time.time()
     z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
     z = self.flow(z_p, y_mask, g=g, reverse=True)
-    o, o_mb = self.dec((z * y_mask)[:,:,:max_len], g=g)
-    return o, o_mb, attn, y_mask, (z, z_p, m_p, logs_p)
+    timings['flow'] = time.time() - start_time
+
+    start_time = time.time()
+    o, o_mb, spec, phase = self.dec((z * y_mask)[:,:,:max_len], g=g)
+    timings['waveform_decoder'] = time.time() - start_time
+
+    return o, o_mb, spec, phase, attn, y_mask, (z, z_p, m_p, logs_p), timings
+
+# SynthesizerTrn クラスの内部に、このメソッドを追加します
+  # (infer メソッドのすぐ下などが分かりやすいです)
+
+  def infer_z_only(self, x, x_lengths, sid=None, noise_scale=1, length_scale=1, noise_scale_w=1., max_len=None):
+    """
+    infer メソッドからデコーダ（self.dec）の呼び出しを削除したバージョン。
+    z（潜在表現）のみを高速に生成します。
+    """
+    timings = {}
+    
+    start_time = time.time()
+    x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
+    timings['text_encoder'] = time.time() - start_time
+
+    if self.n_speakers > 0:
+      g = self.emb_g(sid).unsqueeze(-1) # [b, h, 1]
+    else:
+      g = None
+
+    start_time = time.time()
+    if self.use_sdp:
+      logw = self.dp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)
+    else:
+      logw = self.dp(x, x_mask, g=g)
+    timings['duration_predictor'] = time.time() - start_time
+
+    start_time = time.time()
+    w = torch.exp(logw) * x_mask * length_scale
+    w_ceil = torch.ceil(w)
+    y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()
+    y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, None), 1).to(x_mask.dtype)
+    attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
+    attn = commons.generate_path(w_ceil, attn_mask)
+
+    m_p = torch.matmul(attn.squeeze(1), m_p.transpose(1, 2)).transpose(1, 2) # [b, t', t], [b, t, d] -> [b, d, t']
+    logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(1, 2) # [b, t', t], [b, t, d] -> [b, d, t']
+    timings['alignment_and_projection'] = time.time() - start_time
+
+    start_time = time.time()
+    z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
+    z = self.flow(z_p, y_mask, g=g, reverse=True)
+    timings['flow'] = time.time() - start_time
+
+    # --- 以下のデコーダ呼び出し部分をコメントアウト（または削除） ---
+    # start_time = time.time()
+    # o, o_mb = self.dec((z * y_mask)[:,:,:max_len], g=g)
+    # timings['waveform_decoder'] = time.time() - start_time
+
+    # デコーダの出力(o, o_mb) を除外して return する
+    return attn, y_mask, (z, z_p, m_p, logs_p), timings
 
   def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
     assert self.n_speakers > 0, "n_speakers have to be larger than 0."
@@ -725,6 +794,6 @@ class SynthesizerTrn(nn.Module):
     z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_src)
     z_p = self.flow(z, y_mask, g=g_src)
     z_hat = self.flow(z_p, y_mask, g=g_tgt, reverse=True)
-    o_hat, o_hat_mb = self.dec(z_hat * y_mask, g=g_tgt)
+    o_hat, o_hat_mb, spec, phase = self.dec(z_hat * y_mask, g=g_tgt)
     return o_hat, o_hat_mb, y_mask, (z, z_p, z_hat)
 

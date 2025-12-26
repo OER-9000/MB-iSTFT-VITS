@@ -4,11 +4,12 @@ import random
 import numpy as np
 import torch
 import torch.utils.data
+import importlib
 
 import commons 
 from mel_processing import spectrogram_torch
 from utils import load_wav_to_torch, load_filepaths_and_text
-from text import text_to_sequence, cleaned_text_to_sequence
+# from text import text_to_sequence, cleaned_text_to_sequence
 
 
 class TextAudioLoader(torch.utils.data.Dataset):
@@ -28,6 +29,11 @@ class TextAudioLoader(torch.utils.data.Dataset):
         self.sampling_rate  = hparams.sampling_rate 
 
         self.cleaned_text = getattr(hparams, "cleaned_text", False)
+
+        self.text_module = getattr(hparams, "text_module", "text")
+        text_module = importlib.import_module(self.text_module)
+        self.text_to_sequence = text_module.text_to_sequence
+        self.cleaned_text_to_sequence = text_module.cleaned_text_to_sequence
 
         self.add_blank = hparams.add_blank
         self.min_text_len = getattr(hparams, "min_text_len", 1)
@@ -82,9 +88,10 @@ class TextAudioLoader(torch.utils.data.Dataset):
 
     def get_text(self, text):
         if self.cleaned_text:
-            text_norm = cleaned_text_to_sequence(text)
+            text_norm = self.cleaned_text_to_sequence(text)
         else:
-            text_norm = text_to_sequence(text, self.text_cleaners)
+            text_norm = self.text_to_sequence(text, self.text_cleaners)
+        
         if self.add_blank:
             text_norm = commons.intersperse(text_norm, 0)
         text_norm = torch.LongTensor(text_norm)
@@ -167,6 +174,11 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
 
         self.cleaned_text = getattr(hparams, "cleaned_text", False)
 
+        self.text_module = getattr(hparams, "text_module", "text")
+        text_module = importlib.import_module(self.text_module)
+        self.text_to_sequence = text_module.text_to_sequence
+        self.cleaned_text_to_sequence = text_module.cleaned_text_to_sequence
+
         self.add_blank = hparams.add_blank
         self.min_text_len = getattr(hparams, "min_text_len", 1)
         self.max_text_len = getattr(hparams, "max_text_len", 190)
@@ -220,9 +232,9 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
 
     def get_text(self, text):
         if self.cleaned_text:
-            text_norm = cleaned_text_to_sequence(text)
+            text_norm = self.cleaned_text_to_sequence(text)
         else:
-            text_norm = text_to_sequence(text, self.text_cleaners)
+            text_norm = self.text_to_sequence(text, self.text_cleaners)
         if self.add_blank:
             text_norm = commons.intersperse(text_norm, 0)
         text_norm = torch.LongTensor(text_norm)

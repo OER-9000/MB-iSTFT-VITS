@@ -185,7 +185,7 @@ class WN(torch.nn.Module):
 
 
 class ResBlock1(torch.nn.Module):
-    def __init__(self, channels, kernel_size=3, dilation=(1, 3, 5)):
+    def __init__(self, channels, kernel_size=3, dilation=(1, 3, 5), gin_channels=0):
         super(ResBlock1, self).__init__()
         self.convs1 = nn.ModuleList([
             weight_norm(Conv1d(channels, channels, kernel_size, 1, dilation=dilation[0],
@@ -206,8 +206,13 @@ class ResBlock1(torch.nn.Module):
                                padding=get_padding(kernel_size, 1)))
         ])
         self.convs2.apply(init_weights)
+        self.gin_channels = gin_channels
+        if self.gin_channels != 0:
+            self.cond = nn.Conv1d(gin_channels, channels, 1)
 
-    def forward(self, x, x_mask=None):
+    def forward(self, x, x_mask=None, g=None):
+        if self.gin_channels != 0 and g is not None:
+            x = x + self.cond(g)
         for c1, c2 in zip(self.convs1, self.convs2):
             xt = F.leaky_relu(x, LRELU_SLOPE)
             if x_mask is not None:
@@ -230,7 +235,7 @@ class ResBlock1(torch.nn.Module):
 
 
 class ResBlock2(torch.nn.Module):
-    def __init__(self, channels, kernel_size=3, dilation=(1, 3)):
+    def __init__(self, channels, kernel_size=3, dilation=(1, 3), gin_channels=0):
         super(ResBlock2, self).__init__()
         self.convs = nn.ModuleList([
             weight_norm(Conv1d(channels, channels, kernel_size, 1, dilation=dilation[0],
@@ -239,8 +244,13 @@ class ResBlock2(torch.nn.Module):
                                padding=get_padding(kernel_size, dilation[1])))
         ])
         self.convs.apply(init_weights)
+        self.gin_channels = gin_channels
+        if self.gin_channels != 0:
+            self.cond = nn.Conv1d(gin_channels, channels, 1)
 
-    def forward(self, x, x_mask=None):
+    def forward(self, x, x_mask=None, g=None):
+        if self.gin_channels != 0 and g is not None:
+            x = x + self.cond(g)
         for c in self.convs:
             xt = F.leaky_relu(x, LRELU_SLOPE)
             if x_mask is not None:
