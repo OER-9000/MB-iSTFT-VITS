@@ -1,0 +1,424 @@
+uudb/tts1/data/train/wav/FTS_C001_002.wav|a t a s i k a r a
+uudb/tts1/data/train/wav/FTS_C001_004.wav|i k u y o
+uudb/tts1/data/train/wav/FTS_C001_006.wav|[ u N t o n e ]
+uudb/tts1/data/train/wav/FTS_C001_010.wav|k o r e Q t e
+uudb/tts1/data/train/wav/FTS_C001_011.wav|y o N zy a Q t e m o sp i: N d e s u k a
+uudb/tts1/data/train/wav/FTS_C001_014.wav|h a i h a i h a i
+uudb/tts1/data/train/wav/FTS_C001_017.wav|o Q k e:
+uudb/tts1/data/train/wav/FTS_C001_019.wav|zy a e: k a r a i k u y o
+uudb/tts1/data/train/wav/FTS_C001_021.wav|e: w a sp [ u N t o n e ]
+uudb/tts1/data/train/wav/FTS_C001_024.wav|[ m a ] o t o k o n o h i t o g a i t e
+uudb/tts1/data/train/wav/FTS_C001_031.wav|[ m a ] o m a k e n i n e k o m o i Q sy o n i k u sy a m i s i t e N n o n e
+uudb/tts1/data/train/wav/FTS_C001_037.wav|h u t u: n i t a Q t e r u d a k e
+uudb/tts1/data/train/wav/FTS_C001_039.wav|d e sp d i: w a
+uudb/tts1/data/train/wav/FTS_C001_041.wav|[ u N t o n e ] [ s o n o ]
+uudb/tts1/data/train/wav/FTS_C001_042.wav|[ a ] sp k o n o o t o k o n o sp h e sp h e Q k u sy o N Q t e k u sy a m i s i t a o t o k o n o n a m a e g a w a k a Q t a
+uudb/tts1/data/train/wav/FTS_C001_046.wav|[ a ] s o: s o: s o: s o:
+uudb/tts1/data/train/wav/FTS_C001_048.wav|ch o: s a N ch o: s a N Q t e n a m a e d a k o n o h i t o
+uudb/tts1/data/train/wav/FTS_C001_055.wav|k o i sp k o n o sp n a N d a Q k e
+uudb/tts1/data/train/wav/FTS_C001_056.wav|[ a n o ] o z i: ch a N n o h o:
+uudb/tts1/data/train/wav/FTS_C001_058.wav|o z i: ch a N i r u zy a N
+uudb/tts1/data/train/wav/FTS_C001_061.wav|o z i: ch a N g a
+uudb/tts1/data/train/wav/FTS_C001_062.wav|ch o: s a N ch o: s a N k i k o e N n o k a n a: Q t e i Q t e t e sp p o k a p o k a n a h i n a n o n e s o r e d e
+uudb/tts1/data/train/wav/FTS_C001_065.wav|d e [ n a N k a ] [ a: ] ky o: w a a Q t a k a i n a Q t e [ s o n o ]
+uudb/tts1/data/train/wav/FTS_C001_066.wav|k o n o a g o g a w a r e t e r u o z i ch a N
+uudb/tts1/data/train/wav/FTS_C001_069.wav|n o h o: g a i Q t e t e
+uudb/tts1/data/train/wav/FTS_C001_071.wav|o z i ch a N n o
+uudb/tts1/data/train/wav/FTS_C001_072.wav|y o b i k a k e n i [ k o: ] sp k i k o e t e n a i n o k a n a Q t e
+uudb/tts1/data/train/wav/FTS_C001_074.wav|o z i: ch a N w a sp h u s i g i g a Q t e r u
+uudb/tts1/data/train/wav/FTS_C001_101.wav|[ a: ] p o k a p o k a s i t e N d a
+uudb/tts1/data/train/wav/FTS_C001_102.wav|[ a ] sp s o: s o: b i: m o sp e N g a w a n i s u w a Q t e r u t o k o r o n a n o
+uudb/tts1/data/train/wav/FTS_C001_105.wav|d e [ a ] h u s o: d a e: w a
+uudb/tts1/data/train/wav/FTS_C001_107.wav|s o n o o t o k o n o h i t o d a k e g a
+uudb/tts1/data/train/wav/FTS_C001_109.wav|s o: s o: e N g a w a n i i t e
+uudb/tts1/data/train/wav/FTS_C001_111.wav|k u sy a m i s i t e N n o
+uudb/tts1/data/train/wav/FTS_C001_113.wav|d e sp ky u: n i s a m u k u n a Q t a Q t e i Q t e r u n o
+uudb/tts1/data/train/wav/FTS_C001_115.wav|d a k e d o b i: d e w a a Q t a k a i n a Q t e y u Q t e r u
+uudb/tts1/data/train/wav/FTS_C001_118.wav|m a Q t e y o zy a n a N d a
+uudb/tts1/data/train/wav/FTS_C001_119.wav|[ m a ] t o r i a e z u sp z i: ch a N w a s i N d e r u N d a n e
+uudb/tts1/data/train/wav/FTS_C001_125.wav|e: d e w a s a m u k u n a Q t e r u
+uudb/tts1/data/train/wav/FTS_C001_128.wav|s o: d a y o n e
+uudb/tts1/data/train/wav/FTS_C001_130.wav|[ a ] w a k a Q t a
+uudb/tts1/data/train/wav/FTS_C001_132.wav|[ u N t o ] sp ky u: n i s a m u k u n a Q t a Q t e i Q t e r u zy a N e: d e
+uudb/tts1/data/train/wav/FTS_C001_135.wav|d e m o b i: d e w a sp [ a: ] ky o: w a a Q t a k a i n a: Q t e y u Q t e r u k a r a
+uudb/tts1/data/train/wav/FTS_C001_138.wav|s o: d a n e b i: g a s a i sy o zy a n a i
+uudb/tts1/data/train/wav/FTS_C001_142.wav|s o: s o: b i: w a [ a: ] ky o: w a a Q t a k a i n a: p o k a p o k a Q t e n a Q t e t e
+uudb/tts1/data/train/wav/FTS_C001_145.wav|s o: y o k o n i z i: ch a N g a s u w a Q t e t e
+uudb/tts1/data/train/wav/FTS_C001_146.wav|ch o: s a N ch o: s a N k i k o e N n o k a n a Q t e i Q t e r u k a r a
+uudb/tts1/data/train/wav/FTS_C001_149.wav|b i: d e
+uudb/tts1/data/train/wav/FTS_C001_150.wav|s o: d a n e s i: d e sp [ a r e ] w a s i s i N d e r u N d a u N s o: d a s o: d a
+uudb/tts1/data/train/wav/FTS_C001_151.wav|d e sp h e Q k u sy o N Q t u Q t e sp [ a ] ky u: n i s a m u k u n a Q t a Q t u Q t a Q t e
+uudb/tts1/data/train/wav/FTS_C001_154.wav|u N sp a Q t a k a k u
+uudb/tts1/data/train/wav/FTS_C001_156.wav|[ a ] sp s o: d e n e
+uudb/tts1/data/train/wav/FTS_C001_158.wav|ry u: t i sy u: s a N sp t e y u: s o n o o z i: ch a N g a sp [ s o n o ] h e Q k u sy o N Q t e i Q t a t o k i n i sp ch o Q t o s o n o
+uudb/tts1/data/train/wav/FTS_C001_162.wav|n a n i sp n a N d a Q k e ch o: s a N d a Q k e
+uudb/tts1/data/train/wav/FTS_C001_164.wav|ch o: s a N n o t o k o r o o ch o Q t o h a n a r e t e N n o
+uudb/tts1/data/train/wav/FTS_C001_167.wav|d a k a r a a Q t a k a k u n a Q t a N zy a n a i m a t a
+uudb/tts1/data/train/wav/FTS_C001_170.wav|u N sp u N
+uudb/tts1/data/train/wav/FTS_C001_172.wav|[ a ] sp h a n a r e t e s a m u k u n a Q t a n o k a
+uudb/tts1/data/train/wav/FTS_C001_173.wav|[ a ] sp s o: k a d e m a t a m o: ch o Q t o k o k o n i i y o: k a n a Q t e y u Q t e m o d o Q t e k i t a k a r a a Q t a k a k u n a Q t a n o k a
+uudb/tts1/data/train/wav/FTS_C001_177.wav|[ a ] sp s o: d a n e
+uudb/tts1/data/train/wav/FTS_C001_179.wav|u N b i: d a n e
+uudb/tts1/data/train/wav/FTS_C001_180.wav|b i: sp s i: u N
+uudb/tts1/data/train/wav/FTS_C001_184.wav|d i: d a u N
+uudb/tts1/data/train/wav/FTS_C001_186.wav|u N sp b i: s i: e: d i: d a n e
+uudb/tts1/data/train/wav/FTS_C001_189.wav|o Q k e: d e s u
+uudb/tts1/data/train/wav/FTS_C002_001.wav|zy a s a i sy o w a z i b u N n o b u N o m i y o: n e
+uudb/tts1/data/train/wav/FTS_C002_002.wav|h u N h u N
+uudb/tts1/data/train/wav/FTS_C002_003.wav|o Q k e: d a y o
+uudb/tts1/data/train/wav/FTS_C002_005.wav|zy a e: k a r a i k u k a
+uudb/tts1/data/train/wav/FTS_C002_014.wav|h a i h a i h a i
+uudb/tts1/data/train/wav/FTS_C002_015.wav|[ a ] o b a: ch a N k a
+uudb/tts1/data/train/wav/FTS_C002_026.wav|h a: h a: s o n o sp y a k e t a d e t u Q t e k i t e r u t o k o r o
+uudb/tts1/data/train/wav/FTS_C002_028.wav|[ a: ] h a i h a i h a i
+uudb/tts1/data/train/wav/FTS_C002_040.wav|[ o ] sp u N
+uudb/tts1/data/train/wav/FTS_C002_043.wav|y u: b i N p o s u t o m i t a i n o n e
+uudb/tts1/data/train/wav/FTS_C002_051.wav|[ a: ] sp k i t e t a y o: Q t e y u Q t e sp n a n i g a Q t e y u Q t e N d a
+uudb/tts1/data/train/wav/FTS_C002_056.wav|u N i e n o n a k a k a r a s o n o k o e g a k i k o e r u n o n e
+uudb/tts1/data/train/wav/FTS_C002_059.wav|zy a s i: n e
+uudb/tts1/data/train/wav/FTS_C002_061.wav|s i: w a o N n a n o k o g a sp [ k o ] sp n a N t e y u: sp i e sp i e n o h o: k a r a p o s u t o o sp k o: a k e t e
+uudb/tts1/data/train/wav/FTS_C002_063.wav|y u: b i N p o s u t o o [ k o ] a k e t e t e
+uudb/tts1/data/train/wav/FTS_C002_065.wav|i e n o h o: k a r a Q t e k a
+uudb/tts1/data/train/wav/FTS_C002_068.wav|n o t o k o r o k a r a
+uudb/tts1/data/train/wav/FTS_C002_069.wav|[ k o: ] i r e r u h o: zy a n a k u t e [ k o: ] d a s u h o:
+uudb/tts1/data/train/wav/FTS_C002_071.wav|u N s o: s o:
+uudb/tts1/data/train/wav/FTS_C002_072.wav|a k e t e t e
+uudb/tts1/data/train/wav/FTS_C002_074.wav|m a d a n e N g a zy o: k i t e n a i y a Q t e y u Q t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C002_076.wav|d e sp [ m a: ] d i: w a
+uudb/tts1/data/train/wav/FTS_C002_078.wav|[ m a: ] t a b u N o k a: s a N t o o b a: ch a N sp t o sp k o n o o N n a n o k o g a sp t u k u e sp n o t o k o n i s u w a Q t e r u t o k o r o d a t o o m o u N d a k e d o
+uudb/tts1/data/train/wav/FTS_C002_084.wav|u N s o: s o: s o: s o: sp o s a r a n i n o Q t e t e s i k a k u Q p o i y a t u
+uudb/tts1/data/train/wav/FTS_C002_094.wav|s o: y u:
+uudb/tts1/data/train/wav/FTS_C002_096.wav|[ e ] n a N d e
+uudb/tts1/data/train/wav/FTS_C002_103.wav|u N u N u N
+uudb/tts1/data/train/wav/FTS_C002_111.wav|[ a ] s i: n e
+uudb/tts1/data/train/wav/FTS_C002_114.wav|s o: s o: [ n a N k a ] sp u N sp m a d a n e N g a zy o: k i t e n a i y a Q t e sp u t i u t i g a w a n o h o: k a r a [ k o ] a k e t e m i t e y u Q t e r u k a r a sp t a b u N
+uudb/tts1/data/train/wav/FTS_C002_119.wav|s o: d a n e k i t e n a i y a Q t u Q t e t e
+uudb/tts1/data/train/wav/FTS_C002_123.wav|d a r o: n e sp a Q t i Q t i sp k o r a k o r a Q t u t e
+uudb/tts1/data/train/wav/FTS_C002_125.wav|[ a: ] s o: d a n e
+uudb/tts1/data/train/wav/FTS_C002_126.wav|s o: d a n e
+uudb/tts1/data/train/wav/FTS_C002_130.wav|s a i g o b i: k a n a
+uudb/tts1/data/train/wav/FTS_C002_132.wav|s o: d a n e
+uudb/tts1/data/train/wav/FTS_C002_134.wav|d e m o [ n a N k a n e ]
+uudb/tts1/data/train/wav/FTS_C002_136.wav|d i: d e o N n a n o k o g a a Q t e y u Q t e n a n i k a n i k i z u i t e r u sp Q p o i N d a y o n e
+uudb/tts1/data/train/wav/FTS_C002_139.wav|[ a ] sp w a k a Q t a
+uudb/tts1/data/train/wav/FTS_C002_141.wav|s a [ s o n o ] e: g a
+uudb/tts1/data/train/wav/FTS_C002_144.wav|[ s o n o ] n a N d a Q k e sp p o s u t o n i t u Q k a k a Q t e k i t e t a y o: Q t e y u Q t e N d a y o n e
+uudb/tts1/data/train/wav/FTS_C002_146.wav|[ a ] s o: s o: b i: [ a ] b i: n e
+uudb/tts1/data/train/wav/FTS_C002_148.wav|s o n o sp o k a: s a N n o sp o m o t i n o t a b e k a t a g a
+uudb/tts1/data/train/wav/FTS_C002_151.wav|[ n a N k a n e ] [ k o: ] sp k u t i n i t u Q k a k a Q t e r u k a N z i n a n o
+uudb/tts1/data/train/wav/FTS_C002_153.wav|s o r e d e sp o N n a n o k o w a a Q t e k i z u k u N d a y o
+uudb/tts1/data/train/wav/FTS_C002_155.wav|d a k a r a sp [ k o: ] sp h a z i m e g a s i: d e [ a ] m a d a n e N g a zy o: k i t e n a i y a Q t e y u Q t e d e m a m e m o t i y a k e t a d e Q t e y u Q t e sp d e sp a Q t i Q t i Q t e t a b e t e sp [ a Q ] sp o k a: s a N n a N k a t u Q k a k a Q t e r u t o o m o Q t e m i n i i Q t a N zy a n a i
+uudb/tts1/data/train/wav/FTS_C002_173.wav|b i: d a
+uudb/tts1/data/train/wav/FTS_C002_177.wav|u N s o: s o: s o: s o: zy u: y o: d a n e
+uudb/tts1/data/train/wav/FTS_C003_001.wav|zy a y u: y o
+uudb/tts1/data/train/wav/FTS_C003_004.wav|N zy a e: k a r a n e
+uudb/tts1/data/train/wav/FTS_C003_006.wav|e: w a sp [ m a: ] t o: zy o: z i N b u t u w a ch a: r i: b u r a u N t o s u n u: p i: t o u Q d o s u t o Q k u n a n o n e
+uudb/tts1/data/train/wav/FTS_C003_010.wav|d e sp [ u N t o ] s u n u: p i: g a sp n a N d a r o t e n i s u b o: r u k a y a ky u: b o: r u k a w a k a N n a i k e d o sp o k u w a e t e r u n o
+uudb/tts1/data/train/wav/FTS_C003_014.wav|d e sp ch a: r i: b u r a u N g a s o n o t a m a o [ k o: ] t o r o: t o s i t e r u
+uudb/tts1/data/train/wav/FTS_C003_017.wav|t e y u: s i: N sp s i b a h u n o t o k o r o d e
+uudb/tts1/data/train/wav/FTS_C003_022.wav|h i t a s u r a [ n a N k a ] h a s i Q t e r u t o N d e r u
+uudb/tts1/data/train/wav/FTS_C003_025.wav|[ n a N k a ] t o r i a e z u sp h a s i sp u N sp s o N n a k a N z i
+uudb/tts1/data/train/wav/FTS_C003_032.wav|h u N h u N
+uudb/tts1/data/train/wav/FTS_C003_037.wav|h u N h u N
+uudb/tts1/data/train/wav/FTS_C003_041.wav|h u N h u N h u N
+uudb/tts1/data/train/wav/FTS_C003_046.wav|d e a sp s o: d a n e
+uudb/tts1/data/train/wav/FTS_C003_047.wav|u Q d o s u t o Q k u g a t o r i n i h a s i Q t a N d a k e d o sp s u n u: p i: g a sp b o: r u o ch a: r i: b u r a u N n i w a t a s i t e r u N zy a n a i
+uudb/tts1/data/train/wav/FTS_C003_052.wav|s u n u: p i: t o sp ch a: r i: b u r a u N w a m u k a i a Q t e t e
+uudb/tts1/data/train/wav/FTS_C003_055.wav|s u n u: p i: g a b o: r u w a t a s o: t o s i t e r u N d a k e d o sp ch a: r i: b u r a u N w a n a N k a h e N d a n a Q t e k a o n i n a Q t e r u
+uudb/tts1/data/train/wav/FTS_C003_060.wav|s o: d a n e
+uudb/tts1/data/train/wav/FTS_C003_067.wav|s o: d a n e
+uudb/tts1/data/train/wav/FTS_C003_069.wav|d e e: g a s a i g o zy a n a i
+uudb/tts1/data/train/wav/FTS_C003_071.wav|s u n u: p i: g a ch a: r i: b u r a u N n i b o: r u o w a t a s o: t o s i t e r u
+uudb/tts1/data/train/wav/FTS_C003_074.wav|[ a ] sp d e n e sp e: w a sp n a r a b i zy u N d e i k u t o sp i t i b a N sp [ e t o ] h i d a r i n i ch a: r i: b u r a u N g a i t e sp m a N n a k a n i s u n u: p i: sp d e m i g i g a w a n i u Q d o s u t o Q k u g a i r u n o n e
+uudb/tts1/data/train/wav/FTS_C003_081.wav|d a k a r a b o: r u o [ k o: ] p o N sp p o N Q t e w a t a s i t e r u m i t a i n a k a N z i n a N zy a n a i
+uudb/tts1/data/train/wav/FTS_C003_083.wav|s a sp s o n o s a sp s i: sp zy a n a k u t e d i: k a sp d i: w a sp s u n u: p i: t o sp u Q d o s u t o Q k u w a m u k a i a Q t e r u n o
+uudb/tts1/data/train/wav/FTS_C003_088.wav|d a k a r a t a b u N [ s o n o ] m u k a i a Q t e t e sp e: w a sp s u n u: p i: t o ch a: r i: b u r a u N d a k e g a m u k a i a Q t e t e sp u Q d o s u t o Q k u w a m u k o: m u i t e N n o sp t i g a u h o: k o:
+uudb/tts1/data/train/wav/FTS_C003_096.wav|d a k a r a sp d i:
+uudb/tts1/data/train/wav/FTS_C003_098.wav|[ a ] ch a u ch a u s i:
+uudb/tts1/data/train/wav/FTS_C003_102.wav|d i: sp e:
+uudb/tts1/data/train/wav/FTS_C004_001.wav|h u N h u N
+uudb/tts1/data/train/wav/FTS_C004_005.wav|e: k a r a i k u
+uudb/tts1/data/train/wav/FTS_C004_007.wav|[ u N t o ] m a z u e: n o sp e w a
+uudb/tts1/data/train/wav/FTS_C004_009.wav|[ n a N k a n e ] sp r o b o Q t o m i t a i n o g a h u t a r i i t e
+uudb/tts1/data/train/wav/FTS_C004_011.wav|d e n e [ n a N k a ] sp h i t o sp i Q p o: g a
+uudb/tts1/data/train/wav/FTS_C004_013.wav|m e g a n e o h a z u s i t e sp [ n a N k a ] h a N k a t i d e h u k o: t o s i t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C004_016.wav|d e s o r e o m i t a m o: i Q p o: n o r o b o Q t o g a
+uudb/tts1/data/train/wav/FTS_C004_018.wav|k i r a r i: N m i t a i n a k a N z i d e sp [ n a N k a ] h a: t o g a [ k o: ] u k a N d e sp m a: m i t a i n a k a N z i n i n a Q t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C004_022.wav|d e sp b i: n o h o: g a
+uudb/tts1/data/train/wav/FTS_C004_024.wav|[ n a N k a ]
+uudb/tts1/data/train/wav/FTS_C004_025.wav|[ e t o ] i Q p o: n o r o b o Q t o g a
+uudb/tts1/data/train/wav/FTS_C004_027.wav|[ s o n o ] sp [ n a N k a ] [ a ] sp m e g a n e o k a k e t a r o b o Q t o n i sp h a N k a t i o [ k o: ] s a s i d a s i t e r u n o
+uudb/tts1/data/train/wav/FTS_C004_030.wav|d e t a b u N s e Q t e: w a n e g a k u s e: n a N d a y o g a k u s e: k a b a N g a o i t e a Q t e
+uudb/tts1/data/train/wav/FTS_C004_032.wav|[ k o: ] zy u s o n o h i t o t a t i n o h a s i n i
+uudb/tts1/data/train/wav/FTS_C004_034.wav|d e h u t a r i w a n e t a b u N sp d o t e Q p o i t o k o n i i r u n o
+uudb/tts1/data/train/wav/FTS_C004_036.wav|s o: s o: d e s u w a Q t e t e sp i Q p o: n o m e g a n e o k a k e t a h o: g a t a b u N n a i t e t e
+uudb/tts1/data/train/wav/FTS_C004_039.wav|d e m o: i Q p o: n o h i t o g a sp [ k o: ] sp h a N k a t i o s a s i d a s i t e t e
+uudb/tts1/data/train/wav/FTS_C004_042.wav|Q t e y u: e sp b i: w a
+uudb/tts1/data/train/wav/FTS_C004_059.wav|u N u N u N
+uudb/tts1/data/train/wav/FTS_C004_060.wav|h a i h a i h a i
+uudb/tts1/data/train/wav/FTS_C004_070.wav|zy a n a m i d a o h u i t e r u k a N z i n a n o
+uudb/tts1/data/train/wav/FTS_C004_077.wav|n a r u h o d o
+uudb/tts1/data/train/wav/FTS_C004_079.wav|zy a: s a k o r e w a s a m e g a n e o h a z u s i t a r a ch o: k a Q k o y o k a Q t a m i t a i n a k a N z i n a N d a n e
+uudb/tts1/data/train/wav/FTS_C004_082.wav|[ e ] zy a: t a b u N s a i sy o w a b i: d a y o n e
+uudb/tts1/data/train/wav/FTS_C004_083.wav|k o n o sp n a i t e t e sp [ k o: ] h a N k a t i o s a s i d a s i t e r u t o k o r o d e sy o
+uudb/tts1/data/train/wav/FTS_C004_087.wav|s o: [ a n o ] sp m e g a n e n o h o: g a n a i t e r u n o
+uudb/tts1/data/train/wav/FTS_C004_089.wav|s o: s o: b i:
+uudb/tts1/data/train/wav/FTS_C004_091.wav|d e s o r e n i m u k a Q t e sp [ a n o ] [ k o: ] h a N k a t i o s a s i d a s i t e r u n o n e sp m o: i Q p o: n o h o: g a
+uudb/tts1/data/train/wav/FTS_C004_094.wav|d a k a r a t a b u N b i: g a s a i sy o d e
+uudb/tts1/data/train/wav/FTS_C004_096.wav|s o n o t u g i g a [ k o: ]
+uudb/tts1/data/train/wav/FTS_C004_097.wav|m e g a n e o [ k o: ] sp h a z u sp h a z u s o: t o s i t e r u sp t o k o r o
+uudb/tts1/data/train/wav/FTS_C004_101.wav|e: w a [ n a N k a n e ] sp m e g a n e o h a z u s i
+uudb/tts1/data/train/wav/FTS_C004_102.wav|[ s o n o ] sp m i g i t e d e m o Q t e m e g a n e o h i d a r i t e d e h a N k a t i sp o m o Q t e r u t a b u N n i t a y o: n a e d a t o o m o u n o n e s a Q k i n o t o
+uudb/tts1/data/train/wav/FTS_C004_108.wav|d e sp m o: i Q p o: n o h o: g a sp k i r a: N Q t e n a Q t e h a: t o g a u k a N d e sp n a n i k o r e m i t a i n a k a N z i n a n o
+uudb/tts1/data/train/wav/FTS_C004_115.wav|d a k a r a t a b u N b i: g a s a i sy o d e
+uudb/tts1/data/train/wav/FTS_C004_120.wav|s o: h a N k a t i o s a s i d a s i t e r u n o
+uudb/tts1/data/train/wav/FTS_C004_134.wav|zy a s a sp b i: g a a Q t e s i: g a a Q t e sp d e k i z u i t e sp e: d e h a Q t e n a N zy a n a i
+uudb/tts1/data/train/wav/FTS_C004_145.wav|[ k o: ] n a i t e t e
+uudb/tts1/data/train/wav/FTS_C004_152.wav|s o n o s a
+uudb/tts1/data/train/wav/FTS_C004_154.wav|d i: n o t o k o r o d e w a s a h a N k a t i o m o Q t e r u N d a y o n e
+uudb/tts1/data/train/wav/FTS_C004_156.wav|[ k o: ] n a m i d a o h u k o: t o s i t e r u N d a y o n e
+uudb/tts1/data/train/wav/FTS_C004_158.wav|[ a ] h u i t e r u n o k a
+uudb/tts1/data/train/wav/FTS_C004_160.wav|s o Q k a
+uudb/tts1/data/train/wav/FTS_C004_161.wav|d e s o n o t o k i m o m i g i t e n i m e g a n e o m o Q t e r u N d a y o n e
+uudb/tts1/data/train/wav/FTS_C004_168.wav|[ a: ] n a r u h o d o n e
+uudb/tts1/data/train/wav/FTS_C004_170.wav|zy a sp b i: d i: s i: e: k a
+uudb/tts1/data/train/wav/FTS_C004_174.wav|u N zy a s o r e d e
+uudb/tts1/data/train/wav/FTS_C005_002.wav|u N o n e g a i s i m a s u
+uudb/tts1/data/train/wav/FTS_C005_009.wav|h i t o r i
+uudb/tts1/data/train/wav/FTS_C005_021.wav|[ a ] [ a ] [ a ] [ n a N k a ] s o r e Q p o i m o n o m o m o Q t e r u
+uudb/tts1/data/train/wav/FTS_C005_028.wav|u N u N u N u N
+uudb/tts1/data/train/wav/FTS_C005_029.wav|u N u N u N u N
+uudb/tts1/data/train/wav/FTS_C005_030.wav|h a i h a i
+uudb/tts1/data/train/wav/FTS_C005_038.wav|u N u N u N
+uudb/tts1/data/train/wav/FTS_C005_039.wav|u N u N
+uudb/tts1/data/train/wav/FTS_C005_043.wav|s a N n i N u N
+uudb/tts1/data/train/wav/FTS_C005_046.wav|ch o Q t o h a g e t e r u Q p o i k a N z i
+uudb/tts1/data/train/wav/FTS_C005_048.wav|u N u N h a i h a i
+uudb/tts1/data/train/wav/FTS_C005_052.wav|u N u N
+uudb/tts1/data/train/wav/FTS_C005_055.wav|u N sp [ a ] d o: m o m i t a i n a k a N z i
+uudb/tts1/data/train/wav/FTS_C005_059.wav|[ e ] s o n o s a r a r i: m a N n o h i t o g a
+uudb/tts1/data/train/wav/FTS_C005_063.wav|g a sp b i: n e
+uudb/tts1/data/train/wav/FTS_C005_065.wav|h a i sp zy a s i: i k i m a s u
+uudb/tts1/data/train/wav/FTS_C005_067.wav|s i: w a sp [ u N t o n e ]
+uudb/tts1/data/train/wav/FTS_C005_068.wav|m a z u t o: zy o: z i N b u t u w a sp m a z u m e g a n e o k a k e t a o t o k o n o h i t o t o sp h a g e t a h i t o t o sp s o n o s a r a r i: m a N n e
+uudb/tts1/data/train/wav/FTS_C005_073.wav|a t o sp o m a w a r i s a N g a h u t a r i
+uudb/tts1/data/train/wav/FTS_C005_075.wav|d e <breath> sp [ N t o ] i t i b a N
+uudb/tts1/data/train/wav/FTS_C005_076.wav|[ N t o ] m i g i h a s i n i
+uudb/tts1/data/train/wav/FTS_C005_078.wav|[ e t o ] w a k a i sp o m a w a r i s a N g a sp i t e sp d e [ n a N k a ] t i z u o [ k o: ] s a s i t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C005_081.wav|d e sp [ k o: ] sp [ u N t o ] s o n o s a r a r i: m a N n o h i t o n o k a t a n i t e o a t e t e sp s e t u m e: s i t e r u n o [ n a N k a ] sp k o r e w a m i t a i n a t i t o k o m a Q t a k a o d e
+uudb/tts1/data/train/wav/FTS_C005_086.wav|d e m o s o n o s a r a r i: m a N n o h i t o w a s u Q g o i o k o Q t a k a o d e [ n a N k a ] sp m o: h i t o r i n o o m a w a r i s a N n i sp t a i s i t e n a N k a m o N k u o i Q t e r u Q p o i n o n e
+uudb/tts1/data/train/wav/FTS_C005_090.wav|d e sp a t o n o h u t a r i n o s o n o h a g e t a h i t o t o
+uudb/tts1/data/train/wav/FTS_C005_092.wav|m e g a n e n o h i t o m o [ n a N k a ] s u Q g o i o k o Q t e t e
+uudb/tts1/data/train/wav/FTS_C005_095.wav|d e [ n a N k a ] sp [ u N t o n e ] sp m a N n a k a n i sp [ e t o ] o m a w a r i s a N g a i t e
+uudb/tts1/data/train/wav/FTS_C005_098.wav|ry o: w a k i k a r a [ k o: ] m o N k u o i w a r e t e r u k a N z i n a n o
+uudb/tts1/data/train/wav/FTS_C005_100.wav|[ N t o n e ] sp s o: s o: t o s i t o Q t a h o: n o o m a w a r i s a N g a i t e
+uudb/tts1/data/train/wav/FTS_C005_101.wav|s o: s o: m e g a n e t o h a g e g a sp [ k o: ] h i h i d a r i k a r a g u w a: Q t e n a N k a y u Q t e t e sp d e
+uudb/tts1/data/train/wav/FTS_C005_104.wav|s o n o m i g i w a k i n i w a sp s a r a r i: m a N g a i t e s a r a r i: m a N m o s o n o sp ch o Q t o t o s i t o Q t a Q p o i o m a w a r i s a N n i g a: Q t e m o N k u y u Q t e t e sp d e sp i t i b a N m i g i h a s i n o w a k a i sp o m a w a r i s a N g a [ n a N k a ] k o m a Q t a k a N z i d e a n o m i t a i n a sp s o n o o k o Q t e r u sp s a r a r i: m a N n i sp a n o t u Q t e [ k o: ] t i z u o s i m e s i n a g a r a sp [ k o: ] [ n a N k a ] y u Q t e r u k a N z i
+uudb/tts1/data/train/wav/FTS_C005_115.wav|d e sp d i: w a sp [ u N t o n e ]
+uudb/tts1/data/train/wav/FTS_C005_116.wav|s a r a r i: m a N g a sp k a t a t e n i sp [ a N t o n e ] i t i b a N m i g i n i sp s a r a r i: m a N g a i t e sp d e sp [ e Q t o ] m i g i t e n i m e m o o m o Q t e sp [ n a N k a k o: ] sp ch o Q t o t a z u n e y o Q k a n a m i t a i n a k a N z i n a n o n e
+uudb/tts1/data/train/wav/FTS_C005_123.wav|d e s o r e n i
+uudb/tts1/data/train/wav/FTS_C005_125.wav|s o: k o: b a N n o n a k a d e
+uudb/tts1/data/train/wav/FTS_C005_127.wav|d e m o: s o n o n a N d a Q k e sp i t i b a N m i g i h a s i n i t i z u g a k a k a r e t e r u sp h e y a m i t a i n a t o k o r o d e sp [ u N t o ]
+uudb/tts1/data/train/wav/FTS_C005_130.wav|[ k o: ] t i z u o sp [ a ] sp m e m o m o Q t e h a i Q t e k i t a Q t e k a N z i n o t o k o r o d e sp [ e t o ] s o n o w a k a i o m a w a r i s a N g a sp ch o Q t o k i z u i t e r u n o s o r e n i sp a d a r e k a h a i Q t e k i t a n a m i t a i n a k a N z i d e
+uudb/tts1/data/train/wav/FTS_C005_136.wav|d e n e <breath> sp [ u N t o ] s o n o
+uudb/tts1/data/train/wav/FTS_C005_138.wav|[ e t o ] h i d a r i n o h o: d e sp ch o Q t o t o s i t o Q t a o m a w a r i s a N t o s o n o h a g e n o h i t o t o m e g a n e n o h i t o g a m o: s u d e n i s a i sy o k a r a k e N k a s i t e t a n o k a n a t a b u N
+uudb/tts1/data/train/wav/FTS_C005_143.wav|d e [ n a N k a ] sp k o: r o N o s i t e r u n o
+uudb/tts1/data/train/wav/FTS_C005_145.wav|d e h a z i m e w a s o n o w a k a i o m a w a r i s a N m o s o n o n a k a n o sp w a n i [ k o: ] sp i r u N d a k e d o sp [ s o n o ] sp s a r a r i: m a N g a h a i Q t e k i t a n o n i k i z u i t e r u m i t a i n a k a N z i
+uudb/tts1/data/train/wav/FTS_C005_149.wav|g a d i:
+uudb/tts1/data/train/wav/FTS_C005_154.wav|s o: d a n e
+uudb/tts1/data/train/wav/FTS_C005_155.wav|u N u N u N
+uudb/tts1/data/train/wav/FTS_C005_156.wav|u N u N
+uudb/tts1/data/train/wav/FTS_C005_158.wav|s o N n a k a N z i d a
+uudb/tts1/data/train/wav/FTS_C005_159.wav|s o: d a n e d i: d e sp h a i Q t e k i m a s i t a m i t a i n a
+uudb/tts1/data/train/wav/FTS_C005_161.wav|u N s o: d a n e u N
+uudb/tts1/data/train/wav/FTS_C005_163.wav|s o: d a n e
+uudb/tts1/data/train/wav/FTS_C005_164.wav|d e t a b u N t u g i g a b i: zy a n a i
+uudb/tts1/data/train/wav/FTS_C005_168.wav|s o: d a n e k o r e g a Q t e s e t u m e: s i h a z i m e t e r u N d a k e d o sp t a b u N s o n o s a r a r i: m a N n o h i t o w a
+uudb/tts1/data/train/wav/FTS_C005_171.wav|k o n o m i sp h i d a r i h a s i d e sp s a r e t e r u k o: r o N n o n a k a n i h a i Q ch a u N d a y o n e t a b u N
+uudb/tts1/data/train/wav/FTS_C005_173.wav|d e i Q sy o n i n a Q t e m o N k u o y u Q ch a u m i t a i n a u N
+uudb/tts1/data/train/wav/FTS_C005_176.wav|d a k a r a e: b i: sp [ a ] sp e: d i: b i: s i: k a sp u N
+uudb/tts1/data/train/wav/FTS_C006_001.wav|zy a e: k a r a d o: z o
+uudb/tts1/data/train/wav/FTS_C006_010.wav|o m i s e n o m a e n i
+uudb/tts1/data/train/wav/FTS_C006_028.wav|[ a: ] p a k a Q t e a k e r e r u Q t e k o t o
+uudb/tts1/data/train/wav/FTS_C006_033.wav|h a i h a i h a i h a i
+uudb/tts1/data/train/wav/FTS_C006_035.wav|[ a ] zy a s o n o o t o k o n o h i t o w a t i k a n o t o k o r o k a r a z i t e N sy a o d a s o: t o s i t e r u m i t a i n a
+uudb/tts1/data/train/wav/FTS_C006_040.wav|[ a ] n a r u h o d o n e
+uudb/tts1/data/train/wav/FTS_C006_042.wav|h a i h a i h a i
+uudb/tts1/data/train/wav/FTS_C006_047.wav|u N n a r u h o d o
+uudb/tts1/data/train/wav/FTS_C006_052.wav|zy a s i: t o d i: i k u n e
+uudb/tts1/data/train/wav/FTS_C006_054.wav|u N t o n e s i: t o d i: w a
+uudb/tts1/data/train/wav/FTS_C006_055.wav|[ a ] m a t o m e t e i Q ch a Q t e i sp i: k a n a
+uudb/tts1/data/train/wav/FTS_C006_057.wav|s i: t o d i: w a n e
+uudb/tts1/data/train/wav/FTS_C006_058.wav|s o n o t a b u N sp o t o k o n o h i t o w a z e N z e N d e t e k o n a k u t e
+uudb/tts1/data/train/wav/FTS_C006_060.wav|zy a m a z u sp [ a N n e ]
+uudb/tts1/data/train/wav/FTS_C006_061.wav|h i t o r i sp d a k e sy u z i N k o: sp m i t a i n a n o g a i t e s i: t o d i: n i w a sp [ u N t o n e ] sp k o: z i n o o Q ch a N n a n o n e sp o n i: s a N d a k a o Q ch a N d a k a w a k a N n a i k e d o
+uudb/tts1/data/train/wav/FTS_C006_066.wav|d e s i: n o h o: w a
+uudb/tts1/data/train/wav/FTS_C006_067.wav|[ n a N k a n e k o: ]
+uudb/tts1/data/train/wav/FTS_C006_068.wav|a k a r i g a
+uudb/tts1/data/train/wav/FTS_C006_069.wav|[ k o: ] t a b u N y o r u n a N d a r o: n e sp [ n a N k a ] m a w a r i g a k u r a i k a N z i d e
+uudb/tts1/data/train/wav/FTS_C006_072.wav|a k a r i g a t o m o Q t e r u n o
+uudb/tts1/data/train/wav/FTS_C006_074.wav|d e sp <breath> [ k o: ]
+uudb/tts1/data/train/wav/FTS_C006_075.wav|d o: r o n i
+uudb/tts1/data/train/wav/FTS_C006_076.wav|[ n a N k a n e ] a n a g a a i t e t e sp t a b u N s o r e g a e: d e y u Q t a sp [ k o: ] sy u: n o: s a r e t e r u b a sy o d a t o o m o u N d a k e d o sp s o k o w a k o: z i n o sp a n a n a n o n e
+uudb/tts1/data/train/wav/FTS_C006_081.wav|d e n a k a k a r a [ k o: ] i t a o d a s i t a r i sp [ m a ] n a k a sp n i i r e y o: t o s i t e r u n o k a w a k a N n a i k e d o [ n a N k a ] k o: g u g a i Q p a i m a w a r i n i s o n o a n a n o sp m a w a r i n i o i t e a Q t a r i s u r u sp e g a s i: n e
+uudb/tts1/data/train/wav/FTS_C006_088.wav|d e d i: d e w a sp [ u N t o n e ] e k i m a e Q t e y u: m o z i g a a Q t e
+uudb/tts1/data/train/wav/FTS_C006_091.wav|d e s o k o m o sp y o r u d a n e t a b u N k u r a k u t e
+uudb/tts1/data/train/wav/FTS_C006_094.wav|d e sp [ n a N k a ] o t o k o n o h i t o g a sp s o n o a n a o h o Q t e r u t o k o r o s o n o k o: z i n o o z i s a N g a sp a n a o h o Q t e [ k o: ]
+uudb/tts1/data/train/wav/FTS_C006_100.wav|d a k a r a
+uudb/tts1/data/train/wav/FTS_C006_103.wav|[ a ] d e m o sp t a b u N m o: s a s o n o t o k i n i w a s a sp a n a g a k a k a N s e: s i t e r u Q t e y u: k a [ m a: ] a r u t e: d o sp k a t a t i n i n a Q t e r u N d a y o n e
+uudb/tts1/data/train/wav/FTS_C006_109.wav|[ a ] n a r u h o d o n e
+uudb/tts1/data/train/wav/FTS_C006_110.wav|[ a N n e ] d o Q t i k a Q t e y u: t o d i d i: n o h o: g a m a d a k o: z i g a h a z i m a Q t a k a N z i d e sp s i: d e w a m o: k e Q k o: n e sp [ a n o ]
+uudb/tts1/data/train/wav/FTS_C006_114.wav|[ a ] sp m a Q t e d i: d e w a sp a n a g a m a d a [ k o: ] t u t i Q p o i n o
+uudb/tts1/data/train/wav/FTS_C006_117.wav|d a k e d o sp s i: d e w a m o: k o N k u r i Q p o k u n a Q t e N n o n e
+uudb/tts1/data/train/wav/FTS_C006_119.wav|d a k a r a d i: y o r i s i: n o h o: g a a t o d a t o o m o u y o
+uudb/tts1/data/train/wav/FTS_C006_123.wav|u N u N
+uudb/tts1/data/train/wav/FTS_C006_125.wav|[ a N n e ] h e r u m e Q t o k a b u Q t e r u
+uudb/tts1/data/train/wav/FTS_C006_127.wav|[ a ] sp d e sp d e m o n e m e g a k e Q k o: o Q k i: k a r a m o s i k a s i t a r a s o n o k u r o k a m i n o h i t o n a n o k a m o s i r e n a i
+uudb/tts1/data/train/wav/FTS_C006_130.wav|[ a n o n e ] h e r u m e Q t o k a b u Q t e r u k a r a sp k a a t a m a w a w a k a N n a i k e d o sp [ a n o ] m a r u i m e d e sp [ a n o ]
+uudb/tts1/data/train/wav/FTS_C006_135.wav|u N h a n a o Q k i: [ a n o ] m a t u g e g a py u Q t o d e t e t e
+uudb/tts1/data/train/wav/FTS_C006_139.wav|[ a N n e ] m a y u g e u N k e Q k o: s a g a r i m a y u d a n e
+uudb/tts1/data/train/wav/FTS_C006_141.wav|[ a ] sp zy a o n a z i h i t o n a N d a
+uudb/tts1/data/train/wav/FTS_C006_143.wav|zy a: t a b u N k o n o h i t o w a sp e k i m a e n o sp z i t e N sy a o k i b a n i o k e n a i k a r a a n a o h o Q t a N d a y o
+uudb/tts1/data/train/wav/FTS_C006_147.wav|t a b u N s o: d a y o
+uudb/tts1/data/train/wav/FTS_C006_148.wav|s o e k i m a e Q t e y u: z i g a a r u k a r a
+uudb/tts1/data/train/wav/FTS_C006_151.wav|[ a ] zy a: t a b u N
+uudb/tts1/data/train/wav/FTS_C006_153.wav|d i: s i: sp b i: e: zy a n a i
+uudb/tts1/data/train/wav/FTS_C006_156.wav|d i: g a a n a o h o r i h a z i m e t a k a N z i u N
+uudb/tts1/data/train/wav/FTS_C006_157.wav|d e s i: d e ch o Q t o [ k o: ] k a N s e: sp n i t i k a z u i t e r u n o
+uudb/tts1/data/train/wav/FTS_C006_160.wav|u N s u g o i s i k a k u k u t e
+uudb/tts1/data/train/wav/FTS_C006_162.wav|m o: [ n a N k a ] sp t a b u N k o r e t o b i r a n a n o k a m o s i r e n a i
+uudb/tts1/data/train/wav/FTS_C006_163.wav|[ n a N k a n e ] sp i t a o [ k o: ] t u k e y o: t o s i t e r u t o k o r o n a n o
+uudb/tts1/data/train/wav/FTS_C006_166.wav|s o: s o: s o:
+uudb/tts1/data/train/wav/FTS_C006_167.wav|d a k a r a sp t a b u N sp a n a o h o Q t e sp k a N s e: n i t i k a z u i t e z i t e N sy a d e e k i m a d e i Q t e sp [ k o: ] t a b u N t o b i r a o s i m e y o: t o s i t e r u
+uudb/tts1/data/train/wav/FTS_C006_172.wav|t o y u: zy u N b a N zy a n a i
+uudb/tts1/data/train/wav/FTS_C006_175.wav|[ a ] s o: d a n e
+uudb/tts1/data/train/wav/FTS_C006_177.wav|n o r i h a z i m e y o: t o s i t e r u Q t e k o t o d a m o N n e
+uudb/tts1/data/train/wav/FTS_C006_182.wav|d e m o sp d i: d e sp s o n o a n a g a a r u b a sy o g a e k i m a e Q t e n a Q t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C006_185.wav|d a k a r a sp [ u N t o ] e k i
+uudb/tts1/data/train/wav/FTS_C006_186.wav|s o n o sp n a N d a Q k e sp [ e Q t o ] b i: n o e w a s e b i r o o k i t e r u
+uudb/tts1/data/train/wav/FTS_C006_189.wav|t e k o t o w a t a b u N t u: k i N sp Q p o i y o n e
+uudb/tts1/data/train/wav/FTS_C006_192.wav|d a k a r a e k i m a d e k i t a t o k o r o zy a n a i
+uudb/tts1/data/train/wav/FTS_C006_198.wav|k a sp [ e Q t o ] e k i m a d e z i t e N sy a d e i Q t e s o r e k a r a d e N sy a n i n o Q t e k a i sy a n i m u k a u t o k o r o m i t a i n a k a N z i zy a n a i
+uudb/tts1/data/train/wav/FTS_C006_202.wav|k a e r u sp k a e r u Q p o k u w a n a i d e sy o
+uudb/tts1/data/train/wav/FTS_C006_204.wav|u N zy a: t u: k i N zy a n a i
+uudb/tts1/data/train/wav/FTS_C006_206.wav|u N p o k u n a i
+uudb/tts1/data/train/wav/FTS_C006_207.wav|d a Q t e k o n o e k i m a e t o k a k a i t e r u t o k o r o w a sp [ k o: ] k u r a i k a N z i n i n a Q t e r u k a r a
+uudb/tts1/data/train/wav/FTS_C006_210.wav|u N y o r u sp d a t o o m o u
+uudb/tts1/data/train/wav/FTS_C006_211.wav|d a k a r a t a b u N
+uudb/tts1/data/train/wav/FTS_C006_213.wav|d i: s i:
+uudb/tts1/data/train/wav/FTS_C006_215.wav|e: b i: sp u N sp zy a n a i
+uudb/tts1/data/train/wav/FTS_C007_005.wav|h o N t o d a h a t i k o m a d a
+uudb/tts1/data/train/wav/FTS_C007_007.wav|h o N t o d a n e
+uudb/tts1/data/train/wav/FTS_C007_010.wav|h u N h u N h u N
+uudb/tts1/data/train/wav/FTS_C007_011.wav|[ e ] sp e: k a r a i k u s o s i t a r a
+uudb/tts1/data/train/wav/FTS_C007_014.wav|[ e t o n e ] zy a e: n o sp e k a r a n e
+uudb/tts1/data/train/wav/FTS_C007_016.wav|e: w a sp y o r u n a n o n e
+uudb/tts1/data/train/wav/FTS_C007_019.wav|d e [ m a ] t u k i g a d e t e t e
+uudb/tts1/data/train/wav/FTS_C007_021.wav|d e sp k o n o n a k a n i d e t e N n o w a sp g u: f i: t o m i Q k i: d e
+uudb/tts1/data/train/wav/FTS_C007_023.wav|[ a ] sp u N m i Q k i: d e
+uudb/tts1/data/train/wav/FTS_C007_025.wav|m i Q k i: g a sp [ n a N k a n e ] sp t u r i z a o Q p o i n o o m o Q t e t e sp t u r i z a o n o s a k i n i w a zy o: r o g a t u i t e r u n o
+uudb/tts1/data/train/wav/FTS_C007_028.wav|d e zy o: r o k a r a w a a m e sp m i t a i n i [ k o: ] sp m i z u g a b a Q t e d e t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C007_031.wav|d e m o [ n a N k a ] g u: f i: w a
+uudb/tts1/data/train/wav/FTS_C007_033.wav|[ u N t o n e ] m a Q t e n e
+uudb/tts1/data/train/wav/FTS_C007_034.wav|[ u N t o ] g u: f i: g a
+uudb/tts1/data/train/wav/FTS_C007_036.wav|t e m a e n i i r u n o n e
+uudb/tts1/data/train/wav/FTS_C007_038.wav|d e m i Q k i: g a u s i r o n o h o: n i i t e
+uudb/tts1/data/train/wav/FTS_C007_040.wav|d e s o n o m i Q k i: w a sp t u r i z a o k a r a n o zy o: r o k a r a n o m i z u o
+uudb/tts1/data/train/wav/FTS_C007_042.wav|g u: f i: n i k a k e t e r u n o
+uudb/tts1/data/train/wav/FTS_C007_044.wav|d e <breath> sp g u: f i: w a n e n e t e r u n o
+uudb/tts1/data/train/wav/FTS_C007_046.wav|n e t e r u N d a k e d o [ k o: ] a r u Q t e r u n o
+uudb/tts1/data/train/wav/FTS_C007_049.wav|s o: s o: s o: s o:
+uudb/tts1/data/train/wav/FTS_C007_051.wav|[ n a N k a ] t e o m a e n i [ k o: ] y a Q t e
+uudb/tts1/data/train/wav/FTS_C007_053.wav|ky o N s i: m i t a i n a k a N z i d e a r u i t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C007_056.wav|d e m i Q k i: w a sp [ k o: ] s i t a o s i d a s i t e s i m e s i m e m i t a i n a k a N z i d e [ k o: ] y a Q t e N n o n e
+uudb/tts1/data/train/wav/FTS_C007_059.wav|d e t u g i g a b i: n e
+uudb/tts1/data/train/wav/FTS_C007_061.wav|b i: w a <breath> sp [ u N t o n e ] sp m i Q k i: t o
+uudb/tts1/data/train/wav/FTS_C007_066.wav|k o m i Q k i: g a
+uudb/tts1/data/train/wav/FTS_C007_067.wav|[ n a N k a n e ] sp t a b u N k o r e w a g u: f i: n o i e d a t o o m o u N d a k e d o sp [ a N n e ] g u: f i: Q t e k a i t e a r u p o s u t o g a a r u n o n e
+uudb/tts1/data/train/wav/FTS_C007_070.wav|s o: s o:
+uudb/tts1/data/train/wav/FTS_C007_071.wav|d e s o k o n o
+uudb/tts1/data/train/wav/FTS_C007_072.wav|[ k o: ] sp i e n o h a z i n o h o: n i i t e
+uudb/tts1/data/train/wav/FTS_C007_074.wav|d e sp [ k o: ] m i Q k i: g a [ s o n o ] sp s a Q k i y u Q t a t a k e z a o sp m i t a i n a t u r i z a o m i t a i n o o m o Q t e t e sp [ s o n o ] sp k o m i Q k i: n i sp k o r e g u: f i: n i w a k i k u t o o m o u y o Q t e sp y u Q t e r u n o
+uudb/tts1/data/train/wav/FTS_C007_081.wav|d e sp [ u N t o n e ] sp [ s o n o ] sp t a b u N k o r e m o y o r u d a y o n e sp [ k o: ] d e N k i g a t u i t e r u k a r a
+uudb/tts1/data/train/wav/FTS_C007_084.wav|d e s i: n e
+uudb/tts1/data/train/wav/FTS_C007_086.wav|s i: w a sp [ u N t o ] m i Q k i: t o k o m i Q k i: g a i t e sp t a b u N k o r e w a g u: f i: n o i e n o m a e d a t o o m o u N d a k e d o sp m i Q k i: g a sp g u: f i: g a n e t e k a r a n e Q t e y u Q t e N n o
+uudb/tts1/data/train/wav/FTS_C007_094.wav|d e t u g i w a d i: n e
+uudb/tts1/data/train/wav/FTS_C007_096.wav|d e d i: d e m o sp m i Q k i: t o sp k o m i Q k i: g a i t e
+uudb/tts1/data/train/wav/FTS_C007_098.wav|m i Q k i: w a sp t u r i z a o sp o m o Q t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C007_100.wav|d e sp [ u N t o n e ] sp d o Q t i n o s e r i h u g a s a k i k a w a w a k a N n a i N d a k e d o sp m a z u m i Q k i: g a sp n e m u r i n a g a r a a r u i t e t e m o sp a m e n o n a k a n i i r u Q t e sp ch a N t o w a k a r u n o s a Q t e y u Q t e r u n o n e
+uudb/tts1/data/train/wav/FTS_C007_105.wav|d e k o m i Q k i: n o h o: g a sp a r e sp m i Q k i: o z i s a N Q t e sp [ k o: ] sp [ n a N k a ] a s e Q t a k a N z i d e
+uudb/tts1/data/train/wav/FTS_C007_115.wav|u N u N
+uudb/tts1/data/train/wav/FTS_C007_139.wav|u N u N
+uudb/tts1/data/train/wav/FTS_C007_147.wav|[ a ] h u r a h u r a Q t e k a N z i d e
+uudb/tts1/data/train/wav/FTS_C007_152.wav|u h u N
+uudb/tts1/data/train/wav/FTS_C007_153.wav|[ a: ] n a r u h o d o a i z u s i t e r u N d a
+uudb/tts1/data/train/wav/FTS_C007_156.wav|n a r u h o d o n e
+uudb/tts1/data/train/wav/FTS_C007_158.wav|h u N h u N
+uudb/tts1/data/train/wav/FTS_C007_159.wav|u N u N u N u N
+uudb/tts1/data/train/wav/FTS_C007_160.wav|[ a: ] m i e t e r u N d a
+uudb/tts1/data/train/wav/FTS_C007_162.wav|h a i h a i w a k a Q t a
+uudb/tts1/data/train/wav/FTS_C007_172.wav|[ a ] n a r u h o d o n e
+uudb/tts1/data/train/wav/FTS_C007_187.wav|h a n a r u h o d o n e
+uudb/tts1/data/train/wav/FTS_C007_189.wav|zy a t a b u N sp [ e t o ]
+uudb/tts1/data/train/wav/FTS_C007_191.wav|z i: g a sp i t i b a N s a i sy o zy a n a i
+uudb/tts1/data/train/wav/FTS_C007_194.wav|t e y u Q t e t e sp s o s i t a r a sp t a b u N sp t u g i n o s i: d e sp g u: f i: g a n e t e k a r a n e Q t e y u Q t e r u y a t u d a t o o m o u N d a y o n e
+uudb/tts1/data/train/wav/FTS_C007_197.wav|d e sp t u g i g a
+uudb/tts1/data/train/wav/FTS_C007_199.wav|d o r e d a r o: n e u N
+uudb/tts1/data/train/wav/FTS_C007_201.wav|[ a ] <breath> sp w a k a Q t a
+uudb/tts1/data/train/wav/FTS_C007_203.wav|n e m u r i n a g a r a a r u i t e t e m o
+uudb/tts1/data/train/wav/FTS_C007_205.wav|[ a ] sp t i g a u n a
+uudb/tts1/data/train/wav/FTS_C007_207.wav|g u: f i: n i k i k u t o o m o u y o
+uudb/tts1/data/train/wav/FTS_C007_209.wav|d a r e g a
+uudb/tts1/data/train/wav/FTS_C007_211.wav|g u: f i: g a
+uudb/tts1/data/train/wav/FTS_C007_212.wav|g u: f i: g a <breath> sp [ u N t o n e ]
+uudb/tts1/data/train/wav/FTS_C007_214.wav|s o r e w a sp e: d e m o: m i Q k i: g a o m o i Q k i r i zy o: r o k a r a sp zy o: r o n o m i z u o g u: f i: n i k a k e t e t e
+uudb/tts1/data/train/wav/FTS_C007_218.wav|d e m u y u: by o: sy a m i t a i n i g u: f i: g a a r u Q t e r u Q t e y u: s i: N g a a r u
+uudb/tts1/data/train/wav/FTS_C007_225.wav|t a b u N sp [ a N n e ]
+uudb/tts1/data/train/wav/FTS_C007_229.wav|u N sp s o: d a n e
+uudb/tts1/data/train/wav/FTS_C007_231.wav|s i: d e y u Q t e r u N d a
+uudb/tts1/data/train/wav/FTS_C007_232.wav|[ N ] sp ch a u ch a u
+uudb/tts1/data/train/wav/FTS_C007_234.wav|e h u d e y u Q t e r u N d a
+uudb/tts1/data/train/wav/FTS_C007_235.wav|d a k a r a a t a s i g a o m o u n i t a b u N n e sp n e m u r i n a g a r a a r u i t e t e m o a m e n a a m e n o n a k a n i i r u Q t e ch a N t o w a k a r u n o s a Q t e y u Q t e sp a r e m i Q k i: o z i s a N Q t e sp y u Q t e r u k a r a sp t a b u N s o r e d e [ k o: ] sp a d e t e k i t a Q t e y u: n o g a [ k o: ] a r e m i Q k i: o z i s a N sp Q t e y u Q t a a t o n i sp s i: Q t e y u Q t e d e t e k i t a y o Q t e t u z u k u N zy a n a i k a n a t o o m o u N d a y o n e
+uudb/tts1/data/train/wav/FTS_C007_244.wav|[ a n o n e ] sp n e m u r i n a [ a N t o n e ] sp d o k o n i i r u k a w a i m a i t i y o k u w a k a N n a i N d a k e d o sp s o: h u t a r i s i k a u t u Q t e n a k u t e y o r u n a n o
+uudb/tts1/data/train/wav/FTS_C007_249.wav|u N i e n o m a e d e w a n a i t o o m o u
+uudb/tts1/data/train/wav/FTS_C007_251.wav|[ n a N k a n e ] m u k o: n o h o: n i sp t a b u N k o y a m i t a i n a n o g a m i e t e h e: t o k a g a m i e r u k a r a
+uudb/tts1/data/train/wav/FTS_C007_255.wav|t a b u N [ k o: ] sp k a k u r e t e r u Q p o i e g a sp a r u n o n e [ k o: ] sp h a s i sp [ k o: ] sp k a b e n o [ k o: ] n a N t e y u: N d a r o h a s i n o h o: k a r a k o: y a Q t e
+uudb/tts1/data/train/wav/FTS_C007_261.wav|s o r e w a b i: d a n e
+uudb/tts1/data/train/wav/FTS_C007_263.wav|d e k o r e d e sp k o r e g u: f i: n i w a k i k u t o o m o u y o Q t e y u Q t e r u n o
+uudb/tts1/data/train/wav/FTS_C007_265.wav|d a k a r a
+uudb/tts1/data/train/wav/FTS_C007_269.wav|s o: d a n e
+uudb/tts1/data/train/wav/FTS_C007_272.wav|[ u N t o n e ] zy a: sp k o r e g u: f i: n i w a k i k u t o o m o u y o Q t e y u Q t e sp s o n o t u g i n i sp n e m u r i n a g a r a a r u i t e t e m o a m e n o n a k a n i i r u Q t e ch a N t o w a k a r u n o s a Q t e y u Q t e sp a r e m i Q k i: o z i s a N Q t e k o m i Q k i: g a y u Q t e sp s o n o t u g i n i sp s i: d e t e k i t a y o sp Q t e n a r u N zy a n a i
+uudb/tts1/data/train/wav/FTS_C007_278.wav|d e sp d e sp n a N d a r o: n e
+uudb/tts1/data/train/wav/FTS_C007_281.wav|d e s a sp m i Q k i: g a t a b u N k o n o m i z u o k a k e r u zy a N
+uudb/tts1/data/train/wav/FTS_C007_283.wav|s o s i t a r a i Q k a i g u: f i: w a i e n i m o d o Q t e d e k a s a o s a s i t e d e t e k u r u N d a y o n e m a t a n e
+uudb/tts1/data/train/wav/FTS_C007_289.wav|m i Q k i:
+uudb/tts1/data/train/wav/FTS_C007_290.wav|m i Q k i: g a
+uudb/tts1/data/train/wav/FTS_C007_293.wav|e: d e s u n e
+uudb/tts1/data/train/wav/FTS_C007_299.wav|u N sp k a k a Q ch a Q t e
+uudb/tts1/data/train/wav/FTS_C007_301.wav|u N zy a s o sp k o n o k a k a Q ch a Q t e
+uudb/tts1/data/train/wav/FTS_C007_303.wav|s o n o t u g i e: n o t u g i g a e i t i d a
+uudb/tts1/data/train/wav/FTS_C007_306.wav|i e n i k a e Q t e u N
+uudb/tts1/data/train/wav/FTS_C007_315.wav|[ a ] <breath> w a k a Q t a zy a: s a k o: zy a n a i
+uudb/tts1/data/train/wav/FTS_C007_316.wav|n e m u r i n a g a r a a r u i t e t e m o sp a m e n o n a k a n i i r u Q t e ch a N t o w a k a r u n o s a sp a r e m i Q k i: o z i s a N Q t e y u Q t e sp k a s a o s a s i n a g a r a d e t e k u r u N zy a n a i
+uudb/tts1/data/train/wav/FTS_C007_323.wav|u N s o: d a n e
+uudb/tts1/data/train/wav/FTS_C007_325.wav|d e sp s o: s o: n e m u r i n a g a r a a r u i t e t e m o a m e n o n a k a n i i r u Q t e ch a N t o w a k a r u n o s a Q t e y u Q t a r a k a s a o s a s i t e d e t e k u r u N zy a n a i
+uudb/tts1/data/train/wav/FTS_C007_330.wav|s o N n a k a N z i zy a n a i
+uudb/tts1/data/train/wav/FTS_C007_333.wav|zy a s a i sy o g a s o n o
+uudb/tts1/data/train/wav/FTS_C007_335.wav|u N sp d a n e
+uudb/tts1/data/train/wav/FTS_C007_336.wav|d e s o n o t u g i g a sp s i: d e sp g u: f i: g a n e t e k a r a n e Q t e y u Q t e
+uudb/tts1/data/train/wav/FTS_C007_340.wav|s o: h i r u m a n a n o m a d a t a b u N
+uudb/tts1/data/train/wav/FTS_C007_342.wav|d e t u g i sp k o r e sp g u: f i: n i w a k i k u t o o m o u y o Q t e y a t u k a n a
+uudb/tts1/data/train/wav/FTS_C007_344.wav|b i: d e s u u N
+uudb/tts1/data/train/wav/FTS_C007_348.wav|s o: [ n a N k a n e ] [ k o: ] i e n o h o: n i k a k u r e t e [ k o: ] t u r i z a o m o Q t e sp u N k i k u t o o m o u y o Q t e y u Q t e r u
+uudb/tts1/data/train/wav/FTS_C007_351.wav|s o: s o:
+uudb/tts1/data/train/wav/FTS_C007_353.wav|[ a ] s i:
+uudb/tts1/data/train/wav/FTS_C007_355.wav|u N s i: d e t e k i t a Q t e y u: N d a n e u N
+uudb/tts1/data/train/wav/FTS_C007_360.wav|y u Q t e sp s o s i t a r a m i Q k i: g a g u: f i: n i
+uudb/tts1/data/train/wav/FTS_C007_362.wav|m o: m i z u o k a k e ch a u N d a
+uudb/tts1/data/train/wav/FTS_C007_364.wav|d e s o r e g a e: n e
+uudb/tts1/data/train/wav/FTS_C007_366.wav|e: d e
+uudb/tts1/data/train/wav/FTS_C007_368.wav|u N k a e Q t e u N
+uudb/tts1/data/train/wav/FTS_C007_369.wav|t e sp d e d i: d e n e m u r i n a g a r a a r u i t e t e m o a m e n o n a k a n i i r u Q t e ch a N t o w a k a r u n o s a Q t e y u Q t a r a sp k o m i Q k i: g a a r e m i Q k i: o z i s a N t u Q t e sp s o: i: d e
+uudb/tts1/data/train/wav/FTS_C007_373.wav|d e t e k u r u
+uudb/tts1/data/train/wav/FTS_C007_374.wav|s o r e d e o Q k e: d a n e
+uudb/tts1/data/train/wav/FTS_C007_376.wav|u N d e t e k i t a a t a s i n o b u N w a d e t a y o

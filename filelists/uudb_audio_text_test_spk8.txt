@@ -1,0 +1,5 @@
+uudb/tts1/data/test/wav/FTS_C002_107.wav|[ a ] ch a N t o h a i Q t e n a i N d a sp [ a: ]
+uudb/tts1/data/test/wav/FTS_C002_175.wav|[ a: ] sp o Q k e: o Q k e:
+uudb/tts1/data/test/wav/FTS_C004_126.wav|s o: n e sp e Q m i t a i n a k a N z i d a y o n e
+uudb/tts1/data/test/wav/FTS_C006_050.wav|n a r u h o d o sp w a k a r i m a s i t a
+uudb/tts1/data/test/wav/FTS_C007_137.wav|[ a: ] sp m i t e r u N d a
