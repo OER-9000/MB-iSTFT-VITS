@@ -9,6 +9,10 @@ import numpy as np
 from scipy.io.wavfile import read
 import torch
 
+import matplotlib
+matplotlib.use("Agg") # この行を追加
+import matplotlib.pyplot as plt
+
 MATPLOTLIB_FLAG = False
 
 logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
@@ -87,6 +91,8 @@ def plot_spectrogram_to_numpy(spectrogram):
   import numpy as np
   
   fig, ax = plt.subplots(figsize=(10,2))
+  fig.patch.set_facecolor('w')
+  ax.set_facecolor('w')
   im = ax.imshow(spectrogram, aspect="auto", origin="lower",
                   interpolation='none')
   plt.colorbar(im, ax=ax)
@@ -95,7 +101,7 @@ def plot_spectrogram_to_numpy(spectrogram):
   plt.tight_layout()
 
   fig.canvas.draw()
-  data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+  data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
   data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
   plt.close()
   return data
@@ -140,6 +146,14 @@ def load_filepaths_and_text(filename, split="|"):
     filepaths_and_text = [line.strip().split(split) for line in f]
   return filepaths_and_text
 
+
+def get_hparams_from_file(config_path):
+  with open(config_path, "r") as f:
+    data = f.read()
+  config = json.loads(data)
+
+  hps = HParams(**config)
+  return hps
 
 def get_hparams(init=True):
   parser = argparse.ArgumentParser()
