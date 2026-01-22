@@ -11,6 +11,7 @@ import pyopenjtalk
 from text_JP.phonemize import Phonemizer
 import numpy as np
 from scipy.io.wavfile import write as write_wav
+import platform
 
 # --- Module-level cache for SynthesisModule instance ---
 _synthesizer_instance = None
@@ -47,7 +48,7 @@ def _japanese_cleaner_revised(text):
             else:
                 # Assuming g2p and phonemizer are available and configured
                 kana_content = pyopenjtalk.g2p(content, kana=True).replace('ヲ', 'オ')
-                phoneme_content = phonemizer(kana)
+                phoneme_content = phonemizer(kana_content)
                 phoneme_parts.append(f'[ {phoneme_content} ]')
             continue
         if part == '{cough}' or part == '<cough>':
@@ -132,21 +133,33 @@ class SynthesisModule:
     def synthesize(self, text, speaker_id, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0):
         """
         Synthesizes audio from the given text for a specific speaker.
+        """
+        audio, _ = self.synthesize_with_z(text, speaker_id, noise_scale, noise_scale_w, length_scale)
+        return audio
 
-        Args:
-            text (str): The text to synthesize.
-            speaker_id (int): The ID of the speaker.
-            noise_scale (float, optional): Noise scale for inference. Defaults to 0.667.
-            noise_scale_w (float, optional): Noise scale width for inference. Defaults to 0.8.
-            length_scale (float, optional): Length scale for inference. Defaults to 1.0.
-
-        Returns:
-            np.ndarray: A numpy array containing the synthesized audio waveform.
+    def infer_z_only(self, z, speaker_id):
+        """
+        Synthesizes audio directly from a latent representation 'z'.
         """
         if speaker_id >= self.get_speaker_count():
             raise ValueError(f"Invalid speaker_id {speaker_id}. Model has {self.get_speaker_count()} speakers.")
 
-        # Process text
+        with torch.no_grad():
+            z_tensor = torch.from_numpy(z).unsqueeze(0).to(self.device, dtype=torch.float)
+            sid = torch.LongTensor([speaker_id]).to(self.device)
+            g = self.model.emb_g(sid).unsqueeze(-1)
+            z_mask = torch.ones(1, 1, z_tensor.shape[2], device=self.device, dtype=z_tensor.dtype)
+            o, _, _, _ = self.model.dec((z_tensor * z_mask), g=g)
+            audio = o[0,0].data.cpu().float().numpy()
+        return audio
+
+    def synthesize_with_z(self, text, speaker_id, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0):
+        """
+        Synthesizes audio from text and also returns the intermediate latent representation 'z'.
+        """
+        if speaker_id >= self.get_speaker_count():
+            raise ValueError(f"Invalid speaker_id {speaker_id}. Model has {self.get_speaker_count()} speakers.")
+
         stn_tst = _text_to_sequence_custom(text, self.hps)
 
         with torch.no_grad():
@@ -154,85 +167,18 @@ class SynthesisModule:
             x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
             sid = torch.LongTensor([speaker_id]).to(self.device)
             
-            # Inference
-            audio = self.model.infer(
+            infer_outputs = self.model.infer(
                 x_tst, 
                 x_tst_lengths, 
                 sid=sid, 
                 noise_scale=noise_scale, 
                 noise_scale_w=noise_scale_w, 
                 length_scale=length_scale
-            )[0][0,0].data.cpu().float().numpy()
-        
-        return audio
-
-# --- Example Usage ---
-if __name__ == '__main__':
-    # --- Configuration (EDIT THESE PATHS) ---
-    CONFIG_PATH = "./logs/uudb_csj31/config.json"
-    # Find the latest G_****.pth file in your model directory
-    CHECKPOINT_PATH = "./logs/uudb_csj31/G_3010000.pth"
-    
-    TEXT_TO_SYNTHESIZE = "こんにちは、これはテストです。音声合成モジュールが正しく動作していますか？"
-    OUTPUT_WAV_PATH = "synthesis_output_sid{sid}.wav"
-    
-    # --- Main Execution ---
-    try:
-        print("Requesting synthesis module instance...")
-        synthesizer = get_synthesis_module_instance(config_path=CONFIG_PATH, checkpoint_path=CHECKPOINT_PATH)
-        
-        num_speakers = synthesizer.get_speaker_count()
-        print(f"Model supports {num_speakers} speakers.")
-        
-        # Synthesize for a specific speaker (e.g., speaker 0)
-        target_speaker_id = 375
-        if num_speakers > target_speaker_id:
-            start_time = time.time()
+            )
             
-            audio_data = synthesizer.synthesize(TEXT_TO_SYNTHESIZE, target_speaker_id)
+            audio = infer_outputs[0][0,0].data.cpu().float().numpy()
+            # Squeeze the batch dimension from z before returning
+            z = infer_outputs[6][0][0].data.cpu().float().numpy()
             
-            end_time = time.time()
-            
-            # Save the audio to a file
-            output_path = OUTPUT_WAV_PATH.format(sid=target_speaker_id)
-            write_wav(output_path, synthesizer.sampling_rate, audio_data)
-            
-            # --- Performance Metrics ---
-            elapsed_time = end_time - start_time
-            audio_duration = len(audio_data) / synthesizer.sampling_rate
-            rtf = elapsed_time / audio_duration
-            
-            print(f"Synthesis complete for Speaker {target_speaker_id}.")
-            print(f"Audio saved to: {output_path}")
-            print(f"Audio duration: {audio_duration:.2f} seconds")
-            print(f"Elapsed time: {elapsed_time:.2f} seconds")
-            print(f"Real Time Factor (RTF): {rtf:.4f}")
+        return audio, z
 
-            # --- Second call to demonstrate caching ---
-            print(f"\nSynthesizing for Speaker {target_speaker_id} --- Second call (should not reload model)")
-            start_time_2nd = time.time()
-            audio_data_2nd = synthesizer.synthesize("二回目の合成テストです。", target_speaker_id)
-            end_time_2nd = time.time()
-
-            output_path_2nd = "synthesis_output_sid{sid}_2nd.wav".format(sid=target_speaker_id)
-            write_wav(output_path_2nd, synthesizer.sampling_rate, audio_data_2nd)
-
-            elapsed_time_2nd = end_time_2nd - start_time_2nd
-            audio_duration_2nd = len(audio_data_2nd) / synthesizer.sampling_rate
-            rtf_2nd = elapsed_time_2nd / audio_duration_2nd
-
-            print(f"Synthesis complete for Speaker {target_speaker_id} (2nd call).")
-            print(f"Audio saved to: {output_path_2nd}")
-            print(f"Audio duration: {audio_duration_2nd:.2f} seconds")
-            print(f"Elapsed time: {elapsed_time_2nd:.2f} seconds")
-            print(f"Real Time Factor (RTF): {rtf_2nd:.4f}")
-
-
-        else:
-            print(f"Target speaker ID {target_speaker_id} is not available.")
-
-    except FileNotFoundError as e:
-        print(f"ERROR: {e}")
-        print("Please update CONFIG_PATH and CHECKPOINT_PATH in the __main__ block.")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
