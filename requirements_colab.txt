@@ -1,0 +1,5 @@
+Cython
+phonemizer
+pyopenjtalk
+scipy
+Unidecode
