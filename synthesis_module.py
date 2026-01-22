@@ -13,6 +13,22 @@ from text_JP.phonemize import Phonemizer
 import numpy as np
 from scipy.io.wavfile import write as write_wav
 
+# --- Module-level cache for SynthesisModule instance ---
+_synthesizer_instance = None
+
+def get_synthesis_module_instance(config_path, checkpoint_path, device=None):
+    """
+    Returns a singleton instance of SynthesisModule.
+    Loads the model only on the first call.
+    """
+    global _synthesizer_instance
+    if _synthesizer_instance is None:
+        print("Creating new SynthesisModule instance (loading model)...")
+        _synthesizer_instance = SynthesisModule(config_path, checkpoint_path, device)
+    else:
+        print("Using existing SynthesisModule instance (model already loaded).")
+    return _synthesizer_instance
+
 # --- Text Pre-processing Functions ---
 
 def _japanese_cleaner_revised(text):
@@ -163,16 +179,16 @@ if __name__ == '__main__':
     
     # --- Main Execution ---
     try:
-        print("Initializing synthesis module...")
-        synthesizer = SynthesisModule(config_path=CONFIG_PATH, checkpoint_path=CHECKPOINT_PATH)
+        print("Requesting synthesis module instance...")
+        synthesizer = get_synthesis_module_instance(config_path=CONFIG_PATH, checkpoint_path=CHECKPOINT_PATH)
         
         num_speakers = synthesizer.get_speaker_count()
         print(f"Model supports {num_speakers} speakers.")
         
         # Synthesize for a specific speaker (e.g., speaker 0)
-        target_speaker_id = 0
+        target_speaker_id = 375
         if num_speakers > target_speaker_id:
-            print(f"\nSynthesizing for Speaker {target_speaker_id}...")
+            print(f"\nSynthesizing for Speaker {target_speaker_id} --- First call")
             start_time = time.time()
             
             audio_data = synthesizer.synthesize(TEXT_TO_SYNTHESIZE, target_speaker_id)
@@ -193,6 +209,26 @@ if __name__ == '__main__':
             print(f"Audio duration: {audio_duration:.2f} seconds")
             print(f"Elapsed time: {elapsed_time:.2f} seconds")
             print(f"Real Time Factor (RTF): {rtf:.4f}")
+
+            # --- Second call to demonstrate caching ---
+            print(f"\nSynthesizing for Speaker {target_speaker_id} --- Second call (should not reload model)")
+            start_time_2nd = time.time()
+            audio_data_2nd = synthesizer.synthesize("二回目の合成テストです。", target_speaker_id)
+            end_time_2nd = time.time()
+
+            output_path_2nd = "synthesis_output_sid{sid}_2nd.wav".format(sid=target_speaker_id)
+            write_wav(output_path_2nd, synthesizer.sampling_rate, audio_data_2nd)
+
+            elapsed_time_2nd = end_time_2nd - start_time_2nd
+            audio_duration_2nd = len(audio_data_2nd) / synthesizer.sampling_rate
+            rtf_2nd = elapsed_time_2nd / audio_duration_2nd
+
+            print(f"Synthesis complete for Speaker {target_speaker_id} (2nd call).")
+            print(f"Audio saved to: {output_path_2nd}")
+            print(f"Audio duration: {audio_duration_2nd:.2f} seconds")
+            print(f"Elapsed time: {elapsed_time_2nd:.2f} seconds")
+            print(f"Real Time Factor (RTF): {rtf_2nd:.4f}")
+
 
         else:
             print(f"Target speaker ID {target_speaker_id} is not available.")
