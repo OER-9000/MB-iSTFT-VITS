@@ -616,22 +616,25 @@ class SynthesisModule:
 
     def synthesize_cond2_shared(self, z, w_ceil, g, bunsetsu_phonemes):
         """
-        [Cond 2: 潜在変数からの生成]
-        計算済みの latent variables (z, w, g) と 文節リスト を受け取り、
-        文節単位でデコードしてスペクトログラム接続を行います。
-        
+        Cond 2: 潜在変数からの生成 (Shared Encoding / Bunsetsu Decoding)
         Args:
-            z (Tensor): 潜在変数 [B, C, T_frame]
-            w_ceil (Tensor): 音素継続長 [B, 1, T_phoneme]
-            g (Tensor): 話者埋め込み [B, C, 1] (None可)
-            bunsetsu_phonemes (List[str]): 文節ごとの音素文字列リスト
+            z (Tensor): [B, C, T_frame]
+            w_ceil (Tensor): [B, 1, T_phoneme] or [T_phoneme]
+            g (Tensor): [B, C, 1]
+            bunsetsu_phonemes (List[str]): 文節リスト
         """
-        # --- 引数チェック ---
-        if not isinstance(bunsetsu_phonemes, list):
-            raise TypeError(f"bunsetsu_phonemes must be a list, got {type(bunsetsu_phonemes)}. "
-                            "Check argument order: (z, w, g, bunsetsu_phonemes)")
-
+        # --- 1. Tensor型とデバイスの保証 ---
+        if isinstance(z, np.ndarray):
+            z = torch.from_numpy(z).to(self.device)
+        if isinstance(w_ceil, np.ndarray):
+            w_ceil = torch.from_numpy(w_ceil).to(self.device)
+        if isinstance(g, np.ndarray):
+            g = torch.from_numpy(g).to(self.device)
+        
+        # w_ceil の平坦化
         w_ceil_flat = w_ceil.squeeze()
+
+        # 文節ごとの音素数計算
         chunk_counts = []
         for ph in bunsetsu_phonemes:
             if not ph: continue
@@ -642,6 +645,7 @@ class SynthesisModule:
         current_ph_idx = 0
         current_z_frame = 0
         
+        # --- 2. チャンクごとのデコードと結合 ---
         with torch.no_grad():
             for count in chunk_counts:
                 durations = w_ceil_flat[current_ph_idx : current_ph_idx + count]
@@ -655,12 +659,15 @@ class SynthesisModule:
                 z_chunk = z[:, :, current_z_frame : z_end_frame]
                 
                 if z_chunk.shape[2] > 0:
-                    # モデルによっては返り値の形式が異なるため、タプル展開で安全に取得
+                    # デコーダー実行 (spec, phaseの取得)
                     ret = self.model.dec(z_chunk, g=g)
+                    
+                    # 戻り値の解析 (wav, ..., spec, phase)
                     if isinstance(ret, tuple):
-                        spec, phase = ret[-2], ret[-1]
+                        spec = ret[-2]
+                        phase = ret[-1]
                     else:
-                        raise RuntimeError("Decoder output format mismatch. Expected spec/phase.")
+                        raise RuntimeError("Decoder did not return spec/phase. This method requires MB-iSTFT-VITS decoder.")
 
                     complex_chunk = spec * torch.exp(1j * phase)
                     
@@ -674,6 +681,8 @@ class SynthesisModule:
                 if current_z_frame >= z.shape[2]: break
 
             if full_complex_spec is None: return np.array([])
+            
+            # --- 3. iSTFTで波形に戻す ---
             audio = self._istft_finalize(full_complex_spec)
             return audio
 
