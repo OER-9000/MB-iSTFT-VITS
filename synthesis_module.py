@@ -232,22 +232,24 @@ class SynthesisModule:
             if not contexts:
                 continue
 
-            current_kana_bunsetsu = ""
+            current_kana_phrase = ""
             for c in contexts:
-                is_new_bunsetsu = False
-                if 'label_info' in c and c['label_info'] and 'j' in c['label_info'] and c['label_info']['j'] and 'feature' in c['label_info']['j']:
-                    is_new_bunsetsu = c['label_info']['j']['feature'] == '1'
+                # Split by accent phrase for finer granularity.
+                is_new_phrase = False
+                if 'label_info' in c and c['label_info'] and 'a' in c['label_info'] and c['label_info']['a'] and 'a1' in c['label_info']['a']:
+                    is_new_phrase = c['label_info']['a']['a1'] == 1
                 
-                if is_new_bunsetsu and current_kana_bunsetsu:
-                    p = self.phonemizer(current_kana_bunsetsu)
+                if is_new_phrase and current_kana_phrase:
+                    p = self.phonemizer(current_kana_phrase)
                     if p.strip():
                         final_phoneme_chunks.append(p)
-                    current_kana_bunsetsu = ""
+                    current_kana_phrase = ""
                 
-                current_kana_bunsetsu += c['string']
+                current_kana_phrase += c['string']
             
-            if current_kana_bunsetsu:
-                p = self.phonemizer(current_kana_bunsetsu)
+            # Add the last phrase from the current text token
+            if current_kana_phrase:
+                p = self.phonemizer(current_kana_phrase)
                 if p.strip():
                     final_phoneme_chunks.append(p)
 
