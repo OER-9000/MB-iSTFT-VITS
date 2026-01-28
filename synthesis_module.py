@@ -192,19 +192,26 @@ class SynthesisModule:
 
     def _split_text_to_bunsetsu_mecab(self, text):
         """
-        Splits text into a list of "bunsetsu" using MeCab.
-        This logic is based on the user-provided code snippet.
+        Splits text into a list of (surface, reading) tuples for each bunsetsu.
+        The reading is extracted from MeCab's feature analysis.
         """
         node = self.mecab_tagger.parseToNode(text)
         chunks = []
-        current_chunk = ""
+        current_chunk_surface = ""
+        current_chunk_reading = ""
         
         while node:
-            if node.surface == "":
+            if not node.surface:
                 node = node.next
                 continue
                 
             features = node.feature.split(",")
+            
+            # For unidic, the reading is typically the 8th element (index 7).
+            # If it's '*', it might be the 7th (index 6).
+            # This might need adjustment depending on the dictionary.
+            reading = features[7] if len(features) > 7 and features[7] != '*' else (features[6] if len(features) > 6 and features[6] != '*' else node.surface)
+
             pos1 = features[0]
             pos2 = features[1]
             
@@ -213,22 +220,23 @@ class SynthesisModule:
                 if pos2 not in ["非自立", "接尾"]:
                     is_independent = True
             
-            if is_independent and current_chunk:
-                chunks.append(current_chunk)
-                current_chunk = ""
+            if is_independent and current_chunk_surface:
+                chunks.append((current_chunk_surface, current_chunk_reading))
+                current_chunk_surface = ""
+                current_chunk_reading = ""
                 
-            current_chunk += node.surface
+            current_chunk_surface += node.surface
+            current_chunk_reading += reading
             node = node.next
             
-        if current_chunk:
-            chunks.append(current_chunk)
+        if current_chunk_surface:
+            chunks.append((current_chunk_surface, current_chunk_reading))
             
         return chunks
 
     def _get_phoneme_chunks(self, raw_text):
         """
-        Splits raw text into phoneme chunks, using MeCab for bunsetsu splitting.
-        This logic is based on the user-provided code snippet.
+        Splits raw text into phoneme chunks, using MeCab for bunsetsu splitting and reading extraction.
         """
         tokens = re.split(r'({cough}|<cough>|\[.*?\]|[、。])', raw_text)
         final_phoneme_chunks = []
@@ -240,8 +248,9 @@ class SynthesisModule:
             
             bunsetsu_list = self._split_text_to_bunsetsu_mecab(text_buffer)
             
-            for b_text in bunsetsu_list:
-                k = pyopenjtalk.g2p(b_text, kana=True).replace('ヲ', 'オ')
+            for b_surface, b_reading in bunsetsu_list:
+                # Use the reading from MeCab, not g2p
+                k = b_reading.replace('ヲ', 'オ')
                 p = self.phonemizer(k)
                 if p.strip():
                     final_phoneme_chunks.append(p.strip())
@@ -254,8 +263,8 @@ class SynthesisModule:
             if token in ["、", "。"]:
                 if text_buffer:
                     bunsetsu_list = self._split_text_to_bunsetsu_mecab(text_buffer)
-                    for i, b_text in enumerate(bunsetsu_list):
-                        k = pyopenjtalk.g2p(b_text, kana=True).replace('ヲ', 'オ')
+                    for i, (b_surface, b_reading) in enumerate(bunsetsu_list):
+                        k = b_reading.replace('ヲ', 'オ')
                         p = self.phonemizer(k)
                         if p.strip():
                             if i == len(bunsetsu_list) - 1:
@@ -276,6 +285,7 @@ class SynthesisModule:
                 if token.startswith("["):
                     content = token[1:-1]
                     if content:
+                        # For tags, we still rely on g2p as MeCab features are not available.
                         k = pyopenjtalk.g2p(content, kana=True).replace('ヲ', 'オ')
                         p = self.phonemizer(k)
                         final_phoneme_chunks.append(f"[ {p} ]")
