@@ -13,6 +13,7 @@ import numpy as np
 from scipy.io.wavfile import write as write_wav
 import platform
 import MeCab
+import unidic_lite
 
 # --- Module-level cache for SynthesisModule instance ---
 _synthesizer_instance = None
