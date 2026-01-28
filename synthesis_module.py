@@ -121,6 +121,10 @@ class SynthesisModule:
         self.phonemizer = Phonemizer()
         print("Phonemizer initialized.")
 
+        print("Initializing Phonemizer...")
+        self.phonemizer = Phonemizer()
+        print("Phonemizer initialized.")
+
     def get_speaker_count(self):
         """
         Returns the total number of speakers the model was trained on.
@@ -186,42 +190,80 @@ class SynthesisModule:
             
         return audio, z
 
+    def _get_phoneme_chunks(self, raw_text):
+        """
+        Splits raw text into phoneme chunks, handling tags and punctuation.
+        Uses pyopenjtalk for bunsetsu splitting of normal text parts.
+        """
+        # 1. Split text roughly by tags and punctuation
+        tokens = re.split(r'({cough}|<cough>|\[.*?\]|[、。])', raw_text)
+        
+        final_phoneme_chunks = []
+        
+        for token in tokens:
+            if not token or token.isspace():
+                continue
+                
+            # A. Punctuation -> Add 'sp' to the last chunk
+            if token in ["、", "。"]:
+                if final_phoneme_chunks:
+                    if not final_phoneme_chunks[-1].endswith(" sp"):
+                        final_phoneme_chunks[-1] += " sp"
+                else:
+                    final_phoneme_chunks.append("sp")
+                continue
+                
+            # B. Tags like [...] or {cough}
+            if (token.startswith("[") and token.endswith("]")) or token in ["{cough}", "<cough>"]:
+                if token.startswith("["):
+                    content = token[1:-1]
+                    if content:
+                        k = pyopenjtalk.g2p(content, kana=True).replace('ヲ', 'オ')
+                        p = self.phonemizer(k)
+                        final_phoneme_chunks.append(f"[ {p} ]")
+                    else:
+                        final_phoneme_chunks.append("[ ]")
+                else:
+                    final_phoneme_chunks.append("<cough>")
+                continue
+            
+            # C. Normal text -> Use pyopenjtalk.run_frontend
+            contexts = pyopenjtalk.run_frontend(token)
+            if not contexts:
+                continue
+
+            current_kana_bunsetsu = ""
+            for c in contexts:
+                is_new_bunsetsu = False
+                if 'label_info' in c and c['label_info'] and 'j' in c['label_info'] and c['label_info']['j'] and 'feature' in c['label_info']['j']:
+                    is_new_bunsetsu = c['label_info']['j']['feature'] == '1'
+                
+                if is_new_bunsetsu and current_kana_bunsetsu:
+                    p = self.phonemizer(current_kana_bunsetsu)
+                    if p.strip():
+                        final_phoneme_chunks.append(p)
+                    current_kana_bunsetsu = ""
+                
+                current_kana_bunsetsu += c['string']
+            
+            if current_kana_bunsetsu:
+                p = self.phonemizer(current_kana_bunsetsu)
+                if p.strip():
+                    final_phoneme_chunks.append(p)
+
+        return final_phoneme_chunks
+
     def prepare_shared_latents(self, raw_text, speaker_id, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0):
         """
         Generates shared latent representation 'z' and bunsetsu information.
-        This is based on the user-provided code snippet.
         """
         if speaker_id >= self.get_speaker_count():
             raise ValueError(f"Invalid speaker_id {speaker_id}. Model has {self.get_speaker_count()} speakers.")
 
-        # A. Bunsetsu splitting and phonemization
-        if not raw_text.strip():
-            return None, None, [], []
-
-        contexts = pyopenjtalk.run_frontend(raw_text)
+        # Get phoneme chunks using the dedicated helper method
+        bunsetsu_phonemes = self._get_phoneme_chunks(raw_text)
         
-        bunsetsu_kana_list = []
-        current_kana = ""
-        if not contexts:
-             g2p_kana = pyopenjtalk.g2p(raw_text, kana=True)
-             if g2p_kana:
-                bunsetsu_kana_list.append(g2p_kana)
-        else:
-            for c in contexts:
-                is_new_bunsetsu = c['label_info']['j']['feature'] == '1'
-                if is_new_bunsetsu and current_kana:
-                    bunsetsu_kana_list.append(current_kana)
-                    current_kana = ""
-                current_kana += c['string']
-            if current_kana:
-                bunsetsu_kana_list.append(current_kana)
-        
-        if not bunsetsu_kana_list:
-            return None, None, [], []
-
-        bunsetsu_phonemes = [self.phonemizer(kana) for kana in bunsetsu_kana_list]
-
-        # B. Get phoneme IDs for the whole text and phoneme counts for each chunk
+        # --- The rest of the function is for encoding ---
         all_phoneme_ids = []
         chunk_phoneme_counts = []
         
@@ -238,7 +280,6 @@ class SynthesisModule:
         if not all_phoneme_ids:
             return None, None, [], []
 
-        # C. Batch encoding (Full Context)
         stn_tst = torch.LongTensor(all_phoneme_ids)
         
         with torch.no_grad():
