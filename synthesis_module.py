@@ -376,21 +376,13 @@ class SynthesisModule:
 
     def prepare_shared_latents(self, text, sid=0, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0):
         """
-        テキストから Cond 2 合成に必要な潜在変数 (z, w, g) と文節リストを一括で準備します。
-        
+        Cond 2用: テキストから潜在変数 (z, w, g) と文節リストを一括生成
         Returns:
-            z (Tensor): 潜在変数 [B, C, T_frame]
-            w_ceil (Tensor): 音素継続長 [B, 1, T_phoneme]
-            g (Tensor): 話者埋め込み [B, C, 1] (話者なしモデルの場合はNone)
-            bunsetsu_chunks (List[str]): 文節ごとの音素文字列リスト
+            z, w_ceil, g, bunsetsu_chunks
         """
-        # Speaker ID setup
         sid_tensor = torch.LongTensor([int(sid)]).to(self.device)
-        
-        # 1. 文節分割 & 音素列変換
         bunsetsu_chunks = self._get_bunsetsu_chunks_mecab(text)
         
-        # 全体の音素ID列を作成
         all_phoneme_ids = []
         for ph in bunsetsu_chunks:
             if not ph: continue
@@ -406,12 +398,11 @@ class SynthesisModule:
             x_tst = stn_tst.to(self.device).unsqueeze(0)
             x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
             
-            # --- Encoder & Duration Predictor ---
             x, m_p, logs_p, x_mask = self.model.enc_p(x_tst, x_tst_lengths)
             
-            # g (Speaker Embedding) の取得
+            # g (Speaker Embedding)
             if self.model.n_speakers > 0:
-                g = self.model.emb_g(sid_tensor).unsqueeze(-1) # [B, H, 1]
+                g = self.model.emb_g(sid_tensor).unsqueeze(-1)
             else:
                 g = None
 
@@ -419,7 +410,7 @@ class SynthesisModule:
             w = torch.exp(logw) * x_mask * length_scale
             w_ceil = torch.ceil(w)
             
-            # --- Expand (Alignment) ---
+            # Alignment / Expand
             B, _, T_phoneme = w_ceil.shape
             T_frame = int(torch.sum(w_ceil).item())
             
@@ -435,7 +426,6 @@ class SynthesisModule:
             m_p = torch.matmul(m_p, attn_mask)
             logs_p = torch.matmul(logs_p, attn_mask)
 
-            # --- Flow (Get z) ---
             y_mask = torch.ones(B, 1, T_frame).to(self.device)
             z_p = m_p + torch.randn_like(m_p, dtype=torch.float) * torch.exp(logs_p) * noise_scale
             z = self.model.flow(z_p, y_mask, g=g, reverse=True)
