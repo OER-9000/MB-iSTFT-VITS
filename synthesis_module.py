@@ -127,7 +127,8 @@ def split_text_to_bunsetsu(text):
         raise RuntimeError("MeCab is not installed. Please install 'mecab-python3' and a dictionary.")
     
     
-    tagger = MeCab.Tagger()
+     # Use unidic-lite dictionary installed via pip
+    tagger = MeCab.Tagger(f"-d {unidic.DICDIR}")
 
     node = tagger.parseToNode(text)
     chunks = []
