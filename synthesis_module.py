@@ -12,6 +12,7 @@ from text_JP.phonemize import Phonemizer
 import numpy as np
 from scipy.io.wavfile import write as write_wav
 import platform
+import MeCab
 
 # --- Module-level cache for SynthesisModule instance ---
 _synthesizer_instance = None
@@ -72,6 +73,61 @@ def _text_to_sequence_custom(text, hps):
     if hps.data.add_blank:
         stn_tst = commons.intersperse(stn_tst, 0)
     return torch.LongTensor(stn_tst)
+
+
+
+
+
+class TorchSTFT(torch.nn.Module):
+    def __init__(self, filter_length=800, hop_length=200, win_length=800, window='hann'):
+        super().__init__()
+        self.filter_length = filter_length
+        self.hop_length = hop_length
+        self.win_length = win_length
+        self.window = torch.hann_window(win_length, periodic=True)
+
+    def inverse(self, magnitude, phase):
+        complex_spec = magnitude * torch.exp(phase * 1j)
+        inverse_transform = torch.istft(
+            complex_spec,
+            self.filter_length, self.hop_length, self.win_length, 
+            window=self.window.to(complex_spec.device)
+        )
+        return inverse_transform.unsqueeze(1)
+
+# --- 文節分割ヘルパー関数 ---
+def split_text_to_bunsetsu(text):
+    """MeCabを用いてテキストを文節単位のリストに分割する"""
+    tagger = MeCab.Tagger()
+    node = tagger.parseToNode(text)
+    chunks = []
+    current_chunk = ""
+    
+    while node:
+        if node.surface == "":
+            node = node.next
+            continue
+        features = node.feature.split(",")
+        pos1 = features[0]
+        pos2 = features[1]
+        
+        is_independent = False
+        if pos1 in ["名詞", "動詞", "形容詞", "副詞", "連体詞", "接続詞", "感動詞", "接頭詞", "形状詞", "代名詞"]:
+            if pos2 not in ["非自立", "接尾"]:
+                is_independent = True
+        
+        if is_independent and current_chunk:
+            chunks.append(current_chunk)
+            current_chunk = ""
+            
+        current_chunk += node.surface
+        node = node.next
+        
+    if current_chunk:
+        chunks.append(current_chunk)
+    return chunks
+
+
 
 
 # --- Main Synthesis Module ---
@@ -351,4 +407,221 @@ class SynthesisModule:
             audio = audio.squeeze().cpu().float().numpy()
             
         return audio
+    
+    def _get_text_from_phonemes(self, phonemes):
+        """音素文字列をID列に変換"""
+        symbol_to_id = {s: i for i, s in enumerate(symbols)}
+        clean_phonemes = phonemes.replace("[", "").replace("]", "").strip()
+        phoneme_list = clean_phonemes.split(" ")
+        text_norm = []
+        for p in phoneme_list:
+            if p in symbol_to_id:
+                text_norm.append(symbol_to_id[p])
+        if self.hps.data.add_blank:
+            text_norm = commons.intersperse(text_norm, 0)
+        return torch.LongTensor(text_norm)
+
+    def _get_bunsetsu_chunks_mecab(self, text):
+        """テキストを文節に分割し、音素化してリストで返す"""
+        tokens = re.split(r'({cough}|<cough>|\[.*?\]|[、。])', text)
+        final_phoneme_chunks = []
+        text_buffer = ""
+        
+        def flush_text_buffer():
+            nonlocal text_buffer
+            if not text_buffer: return
+            bunsetsu_list = split_text_to_bunsetsu(text_buffer)
+            for b_text in bunsetsu_list:
+                k = pyopenjtalk.g2p(b_text, kana=True).replace('ヲ', 'オ')
+                p = self.phonemizer(k)
+                if p.strip():
+                    final_phoneme_chunks.append(p.strip())
+            text_buffer = ""
+
+        for token in tokens:
+            if not token or token.isspace():
+                continue
+            if token in ["、", "。"]:
+                if text_buffer:
+                    bunsetsu_list = split_text_to_bunsetsu(text_buffer)
+                    for i, b_text in enumerate(bunsetsu_list):
+                        k = pyopenjtalk.g2p(b_text, kana=True).replace('ヲ', 'オ')
+                        p = self.phonemizer(k)
+                        if p.strip():
+                            if i == len(bunsetsu_list) - 1:
+                                final_phoneme_chunks.append(p.strip() + " sp")
+                            else:
+                                final_phoneme_chunks.append(p.strip())
+                    text_buffer = ""
+                else:
+                    if final_phoneme_chunks:
+                        final_phoneme_chunks[-1] += " sp"
+                    else:
+                        final_phoneme_chunks.append("sp")
+                continue
+            
+            if (token.startswith("[") and token.endswith("]")) or token in ["{cough}", "<cough>"]:
+                flush_text_buffer()
+                if token.startswith("["):
+                    content = token[1:-1]
+                    if content:
+                        k = pyopenjtalk.g2p(content, kana=True).replace('ヲ', 'オ')
+                        p = self.phonemizer(k)
+                        final_phoneme_chunks.append(f"[ {p} ]")
+                    else:
+                        final_phoneme_chunks.append("[ ]")
+                else:
+                    final_phoneme_chunks.append("<cough>")
+                continue
+            text_buffer += token
+            
+        flush_text_buffer()
+        return final_phoneme_chunks
+
+    def _get_z_and_phoneme_durations(self, x_tst, x_tst_lengths, sid, noise_scale, noise_scale_w, length_scale):
+        """全体を一括エンコードしてzとdurationを取得"""
+        # Text Encoder
+        x, m_p, logs_p, x_mask = self.model.enc_p(x_tst, x_tst_lengths)
+        
+        # Speaker Embedding
+        if self.model.n_speakers > 0:
+            g = self.model.emb_g(sid).unsqueeze(-1)
+        else:
+            g = None
+
+        # Duration Predictor
+        logw = self.model.dp(x, x_mask, g=g)
+        w = torch.exp(logw) * x_mask * length_scale
+        w_ceil = torch.ceil(w)
+        
+        # Expand (Alignment Mask)
+        B, _, T_phoneme = w_ceil.shape
+        T_frame = int(torch.sum(w_ceil).item())
+        attn_mask = torch.zeros(B, T_phoneme, T_frame).to(x.device)
+        
+        w_ceil_flat = w_ceil.squeeze()
+        current_frame = 0
+        for i, dur in enumerate(w_ceil_flat):
+            d = int(dur.item())
+            if d > 0:
+                attn_mask[0, i, current_frame : current_frame + d] = 1.0
+                current_frame += d
+        
+        m_p = torch.matmul(m_p, attn_mask)
+        logs_p = torch.matmul(logs_p, attn_mask)
+
+        # Flow (Reverse) -> z
+        y_mask = torch.ones(B, 1, T_frame).to(x.device)
+        z_p = m_p + torch.randn_like(m_p, dtype=torch.float) * torch.exp(logs_p) * noise_scale
+        z = self.model.flow(z_p, y_mask, g=g, reverse=True)
+        
+        return z, w_ceil, g
+
+    def _istft_finalize(self, full_complex_spec):
+        """スペクトログラムから波形を再構成 (Multi-stream対応)"""
+        device = full_complex_spec.device
+        final_spec = torch.abs(full_complex_spec)
+        final_phase = torch.angle(full_complex_spec)
+        
+        stft = TorchSTFT(
+            filter_length=self.model.dec.gen_istft_n_fft, 
+            hop_length=self.model.dec.gen_istft_hop_size, 
+            win_length=self.model.dec.gen_istft_n_fft
+        ).to(device)
+
+        if hasattr(self.model.dec, 'subbands') and self.model.dec.subbands > 1:
+            b, s, f, t = final_spec.shape
+            spec_reshaped = final_spec.view(b * s, f, t)
+            phase_reshaped = final_phase.view(b * s, f, t)
+            
+            y_mb_hat = stft.inverse(spec_reshaped, phase_reshaped)
+            y_mb_hat = y_mb_hat.squeeze(1).view(b, s, -1)
+
+            if self.model.ms_istft_vits:
+                y_mb_hat = F.conv_transpose1d(
+                    y_mb_hat, 
+                    self.model.dec.updown_filter.to(device) * self.model.dec.subbands, 
+                    stride=self.model.dec.subbands
+                )
+                audio_tensor = self.model.dec.multistream_conv_post(y_mb_hat)
+            else:
+                try:
+                    from pqmf import PQMF
+                    pqmf = PQMF(device)
+                    audio_tensor = pqmf.synthesis(y_mb_hat.unsqueeze(2)) 
+                except ImportError:
+                    audio_tensor = torch.sum(y_mb_hat, dim=1, keepdim=True)
+        else:
+            audio_tensor = stft.inverse(final_spec, final_phase)
+
+        return audio_tensor[0, 0].data.cpu().float().numpy()
+
+    def synthesize_cond2_shared(self, raw_text, sid=0, noise_scale=1.0, noise_scale_w=1.0, length_scale=1.0):
+        """
+        Cond 2: スペクトログラム単純接続 (Strict分割 / Shared Encoding)
+        テキスト全体を一括エンコードした後、文節ごとに分割してデコードし、スペクトログラム上で結合します。
+        """
+        self.model.eval()
+        sid = torch.LongTensor([int(sid)]).to(self.device)
+
+        # 1. 文節リスト作成 & ID化
+        bunsetsu_chunks = self._get_bunsetsu_chunks_mecab(raw_text)
+        
+        all_phoneme_ids = []
+        chunk_counts = []
+        for ph in bunsetsu_chunks:
+            if not ph: continue
+            ids = self._get_text_from_phonemes(ph)
+            chunk_counts.append(len(ids))
+            all_phoneme_ids.extend(ids.tolist())
+            
+        if not all_phoneme_ids:
+            return np.array([])
+        
+        stn_tst = torch.LongTensor(all_phoneme_ids)
+        
+        with torch.no_grad():
+            x_tst = stn_tst.to(self.device).unsqueeze(0)
+            x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
+            
+            # 2. 全体エンコード (Shared)
+            z, w_ceil, g = self._get_z_and_phoneme_durations(
+                x_tst, x_tst_lengths, sid, 
+                noise_scale, noise_scale_w, length_scale
+            )
+            w_ceil_flat = w_ceil.squeeze() 
+
+            full_complex_spec = None
+            current_ph_idx = 0
+            current_z_frame = 0
+            
+            # 3. 文節ごとのデコードと結合
+            for count in chunk_counts:
+                durations = w_ceil_flat[current_ph_idx : current_ph_idx + count]
+                z_len = int(torch.sum(durations).item())
+                
+                z_end_frame = current_z_frame + z_len
+                if z_end_frame > z.shape[2]: z_end_frame = z.shape[2]
+                
+                z_chunk = z[:, :, current_z_frame : z_end_frame]
+                
+                if z_chunk.shape[2] > 0:
+                    # デコーダーからスペックと位相を取得
+                    _, _, spec, phase = self.model.dec(z_chunk, g=g)
+                    complex_chunk = spec * torch.exp(1j * phase)
+                    
+                    if full_complex_spec is None:
+                        full_complex_spec = complex_chunk
+                    else:
+                        full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
+                
+                current_ph_idx += count
+                current_z_frame = z_end_frame
+                if current_z_frame >= z.shape[2]: break
+
+            if full_complex_spec is None: return np.array([])
+            
+            # 4. iSTFT
+            audio = self._istft_finalize(full_complex_spec)
+            return audio
 
