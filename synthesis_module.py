@@ -117,6 +117,10 @@ class SynthesisModule:
         utils.load_checkpoint(checkpoint_path, self.model, None)
         print("Model loaded successfully.")
 
+        print("Initializing Phonemizer...")
+        self.phonemizer = Phonemizer()
+        print("Phonemizer initialized.")
+
     def get_speaker_count(self):
         """
         Returns the total number of speakers the model was trained on.
@@ -181,4 +185,127 @@ class SynthesisModule:
             z = infer_outputs[6][0][0].data.cpu().float().numpy()
             
         return audio, z
+
+    def prepare_shared_latents(self, raw_text, speaker_id, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0):
+        """
+        Generates shared latent representation 'z' and bunsetsu information.
+        This is based on the user-provided code snippet.
+        """
+        if speaker_id >= self.get_speaker_count():
+            raise ValueError(f"Invalid speaker_id {speaker_id}. Model has {self.get_speaker_count()} speakers.")
+
+        # A. Bunsetsu splitting and phonemization
+        if not raw_text.strip():
+            return None, None, [], []
+
+        contexts = pyopenjtalk.run_frontend(raw_text)
+        
+        bunsetsu_kana_list = []
+        current_kana = ""
+        if not contexts:
+             g2p_kana = pyopenjtalk.g2p(raw_text, kana=True)
+             if g2p_kana:
+                bunsetsu_kana_list.append(g2p_kana)
+        else:
+            for c in contexts:
+                is_new_bunsetsu = c['label_info']['j']['feature'] == '1'
+                if is_new_bunsetsu and current_kana:
+                    bunsetsu_kana_list.append(current_kana)
+                    current_kana = ""
+                current_kana += c['string']
+            if current_kana:
+                bunsetsu_kana_list.append(current_kana)
+        
+        if not bunsetsu_kana_list:
+            return None, None, [], []
+
+        bunsetsu_phonemes = [self.phonemizer(kana) for kana in bunsetsu_kana_list]
+
+        # B. Get phoneme IDs for the whole text and phoneme counts for each chunk
+        all_phoneme_ids = []
+        chunk_phoneme_counts = []
+        
+        for ph in bunsetsu_phonemes:
+            if not ph.strip(): continue
+            
+            sequence = cleaned_text_to_sequence(ph)
+            if self.hps.data.add_blank:
+                sequence = commons.intersperse(sequence, 0)
+            
+            chunk_phoneme_counts.append(len(sequence))
+            all_phoneme_ids.extend(sequence)
+            
+        if not all_phoneme_ids:
+            return None, None, [], []
+
+        # C. Batch encoding (Full Context)
+        stn_tst = torch.LongTensor(all_phoneme_ids)
+        
+        with torch.no_grad():
+            x_tst = stn_tst.to(self.device).unsqueeze(0)
+            x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
+            sid = torch.LongTensor([speaker_id]).to(self.device)
+            
+            infer_outputs = self.model.infer(
+                x_tst, 
+                x_tst_lengths, 
+                sid=sid, 
+                noise_scale=noise_scale, 
+                noise_scale_w=noise_scale_w, 
+                length_scale=length_scale
+            )
+            
+            z = infer_outputs[6][0] # Shape: (dim, T)
+            w = infer_outputs[4][0, 0] # Shape: (T_text)
+
+        return z.data.cpu().float().numpy(), w.data.cpu().float().numpy(), chunk_phoneme_counts, bunsetsu_phonemes
+
+    def synthesize_from_shared_latents(self, z, w, chunk_counts, speaker_id):
+        """
+        Synthesizes audio by decoding shared latents chunk by chunk and concatenating spectrograms.
+        """
+        if z is None: return np.array([])
+
+        # Get speaker embedding 'g'
+        with torch.no_grad():
+            sid = torch.LongTensor([speaker_id]).to(self.device)
+            g = self.model.emb_g(sid).unsqueeze(-1)
+
+        w_flat = torch.from_numpy(w).to(self.device)
+        z_tensor = torch.from_numpy(z).to(self.device).unsqueeze(0) # Add batch dim
+
+        full_audio_mb = None # Multi-band audio tensor
+        current_ph_idx = 0
+        current_z_frame = 0
+        
+        with torch.no_grad():
+            for count in chunk_counts:
+                z_len = int(torch.sum(w_flat[current_ph_idx : current_ph_idx + count]).item())
+                
+                z_end_frame = current_z_frame + z_len
+                if z_end_frame > z_tensor.shape[2]: z_end_frame = z_tensor.shape[2]
+                
+                z_chunk = z_tensor[:, :, current_z_frame : z_end_frame]
+                
+                if z_chunk.shape[2] > 0:
+                    # Use the decode method of the model to get post-net output
+                    o_chunk, _, _, _ = self.model.decode(z_chunk, g=g)
+                    
+                    if full_audio_mb is None:
+                        full_audio_mb = o_chunk
+                    else:
+                        full_audio_mb = torch.cat([full_audio_mb, o_chunk], dim=-1)
+
+                current_ph_idx += count
+                current_z_frame = z_end_frame
+                if current_z_frame >= z_tensor.shape[2]: break
+
+        if full_audio_mb is None: return np.array([])
+
+        # Final iSTFT
+        with torch.no_grad():
+            audio = self.model.mb_istft(full_audio_mb, self.model.pqmf)
+            audio = audio.squeeze().cpu().float().numpy()
+            
+        return audio
 
