@@ -3,3 +3,4 @@ phonemizer
 pyopenjtalk
 scipy
 Unidecode
+mecab-python3
