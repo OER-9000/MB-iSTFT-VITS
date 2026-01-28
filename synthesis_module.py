@@ -377,13 +377,19 @@ class SynthesisModule:
             y_mb_hat = y_mb_hat.squeeze(1).view(b, s, -1)          # -> [B, S, Time_sub]
 
             # 合成フィルタ (Synthesis Filter Bank)
-            if self.model.ms_istft_vits: # self.model.ms_istft_vits で判定
+            if self.model.ms_istft_vits:
                 # 学習済みアップサンプリングフィルタを使用
                 y_mb_hat = F.conv_transpose1d(
                     y_mb_hat, 
                     self.model.dec.updown_filter.to(device) * self.model.dec.subbands, 
                     stride=self.model.dec.subbands
                 )
+                # Ensure y_mb_hat is 3D (Batch, Channels, Length) before passing to Conv1d
+                if y_mb_hat.dim() == 4:
+                    y_mb_hat = y_mb_hat.squeeze(2) # Remove the 3rd dimension if it's 1
+                elif y_mb_hat.dim() == 2:
+                    y_mb_hat = y_mb_hat.unsqueeze(0) # Add batch dimension if it's [Channels, Length]
+                
                 audio_tensor = self.model.dec.multistream_conv_post(y_mb_hat)
             else:
                 # PQMFまたは単純加算 (Fallback)
