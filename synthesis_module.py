@@ -557,58 +557,81 @@ class SynthesisModule:
 
         return audio_tensor[0, 0].data.cpu().float().numpy()
 
-    def synthesize_cond2_shared(self, raw_text, sid=0, noise_scale=1.0, noise_scale_w=1.0, length_scale=1.0):
+    def synthesize_cond2_shared(self, z, w_ceil, g, bunsetsu_phonemes):
         """
         Cond 2: スペクトログラム単純接続 (Strict分割 / Shared Encoding)
-        テキスト全体を一括エンコードした後、文節ごとに分割してデコードし、スペクトログラム上で結合します。
+        計算済みの潜在変数 z, w, g と、文節ごとの音素リストを受け取り、
+        文節単位でデコードしてスペクトログラム上で結合します。
         """
-        self.model.eval()
-        sid = torch.LongTensor([int(sid)]).to(self.device)
+        # z, w, g は torch.Tensor であることを前提とします
+        # w_ceil がバッチ次元を持つ場合 (B, 1, T_phoneme) -> (T_phoneme,) に平坦化
+        w_ceil_flat = w_ceil.squeeze()
 
-        # 1. 文節リスト作成 & ID化
-        bunsetsu_chunks = self._get_bunsetsu_chunks_mecab(raw_text)
-        
-        all_phoneme_ids = []
+        # 文節ごとの音素数（chunk_counts）を計算
         chunk_counts = []
-        for ph in bunsetsu_chunks:
+        for ph in bunsetsu_phonemes:
             if not ph: continue
+            # 音素文字列からID列の長さを取得
             ids = self._get_text_from_phonemes(ph)
             chunk_counts.append(len(ids))
-            all_phoneme_ids.extend(ids.tolist())
-            
-        if not all_phoneme_ids:
-            return np.array([])
-        
-        stn_tst = torch.LongTensor(all_phoneme_ids)
-        
-        with torch.no_grad():
-            x_tst = stn_tst.to(self.device).unsqueeze(0)
-            x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
-            
-            # 2. 全体エンコード (Shared)
-            z, w_ceil, g = self._get_z_and_phoneme_durations(
-                x_tst, x_tst_lengths, sid, 
-                noise_scale, noise_scale_w, length_scale
-            )
-            w_ceil_flat = w_ceil.squeeze() 
 
-            full_complex_spec = None
-            current_ph_idx = 0
-            current_z_frame = 0
-            
-            # 3. 文節ごとのデコードと結合
+        full_complex_spec = None
+        current_ph_idx = 0
+        current_z_frame = 0
+        
+        # 3. 文節ごとのデコードと結合
+        # (self.model.dec を使ってデコード)
+        with torch.no_grad():
             for count in chunk_counts:
+                # この文節に対応する duration を取得
                 durations = w_ceil_flat[current_ph_idx : current_ph_idx + count]
+                # フレーム数（zの長さ）を計算
                 z_len = int(torch.sum(durations).item())
                 
                 z_end_frame = current_z_frame + z_len
-                if z_end_frame > z.shape[2]: z_end_frame = z.shape[2]
+                # 範囲チェック
+                if z_end_frame > z.shape[2]: 
+                    z_end_frame = z.shape[2]
                 
+                # z をスライス
                 z_chunk = z[:, :, current_z_frame : z_end_frame]
                 
                 if z_chunk.shape[2] > 0:
                     # デコーダーからスペックと位相を取得
-                    _, _, spec, phase = self.model.dec(z_chunk, g=g)
+                    # モデルによっては戻り値の個数が異なる場合があるため注意
+                    # 通常のVITS: o, logs, x_mask, (z, z_p, m_p, logs_p) ... ではなく
+                    # Generatorのforwardあるいはdec(z)を呼ぶ
+                    
+                    # VITSのGenerator.forward は通常 (z, g=g) を受け取るが、
+                    # ここではスペック接続のために内部の dec を呼び出すか、
+                    # もしくは dec が返す (spec, phase) を期待している
+                    
+                    # infer3.ipynb のロジックに合わせるため、Generatorの構造に依存します。
+                    # 通常の SynthesizerTrn なら self.model.dec(z, g=g) で波形が返るが、
+                    # ここでは「スペクトログラム接続」なので、self.model.dec が spec, phase を返す改造版であるか、
+                    # あるいは中間層にアクセスする必要があります。
+                    
+                    # ★重要: 前回のコードに基づき、self.model.dec が (wav, something, spec, phase) を返すと仮定、
+                    # または self.model.dec ではなく self.model.dec.forward_spec などのメソッドがあるか確認が必要です。
+                    # ここでは一般的なMB-iSTFT-VITSの実装(decがspec, phaseを返す)と仮定します。
+                    
+                    # もし self.model.dec(z) が波形しか返さない場合、この手法（Cond2）は使えません。
+                    # User提供のipynbの文脈から、decがspec/phaseを返すと想定します。
+                    ret = self.model.dec(z_chunk, g=g)
+                    
+                    # 戻り値の展開（実装によって異なる可能性があります）
+                    # パターンA: wav, spec, phase
+                    # パターンB: wav, (spec, phase)
+                    # パターンC: wav (spec, phaseは返さない -> エラーになる)
+                    
+                    # 安全策: 戻り値の長さを確認して処理
+                    if isinstance(ret, tuple):
+                         # 多くのMB-iSTFT-VITS改造版では最後の方にspec, phaseがある
+                        spec = ret[-2]
+                        phase = ret[-1]
+                    else:
+                        raise RuntimeError("Model decoder did not return spec/phase needed for Cond2 synthesis.")
+
                     complex_chunk = spec * torch.exp(1j * phase)
                     
                     if full_complex_spec is None:
@@ -622,7 +645,7 @@ class SynthesisModule:
 
             if full_complex_spec is None: return np.array([])
             
-            # 4. iSTFT
+            # 4. iSTFT で波形に戻す
             audio = self._istft_finalize(full_complex_spec)
             return audio
 
