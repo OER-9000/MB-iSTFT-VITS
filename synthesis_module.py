@@ -126,17 +126,8 @@ def split_text_to_bunsetsu(text):
     if MeCab is None:
         raise RuntimeError("MeCab is not installed. Please install 'mecab-python3' and a dictionary.")
     
-    # 辞書パスの自動判定（unidic-liteなど）
-    try:
-        
-        tagger = MeCab.Tagger(f"-d {unidic.get_path()}")
-    except ImportError:
-        # システム辞書を使用
-        try:
-            tagger = MeCab.Tagger()
-        except RuntimeError:
-             # 辞書が見つからない場合への対処
-            tagger = MeCab.Tagger("-r /dev/null -d /usr/local/lib/mecab/dic/ipadic") # フォールバック例
+    
+    tagger = MeCab.Tagger()
 
     node = tagger.parseToNode(text)
     chunks = []
