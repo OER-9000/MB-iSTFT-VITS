@@ -18,6 +18,31 @@ import unidic
 # --- Module-level cache for SynthesisModule instance ---
 _synthesizer_instance = None
 
+
+class TorchSTFT(torch.nn.Module):
+    def __init__(self, filter_length=800, hop_length=200, win_length=800, window='hann'):
+        super().__init__()
+        self.filter_length = filter_length
+        self.hop_length = hop_length
+        self.win_length = win_length
+        self.window = torch.hann_window(win_length, periodic=True)
+
+    def inverse(self, magnitude, phase):
+        # Ensure inputs are Tensors
+        if isinstance(magnitude, np.ndarray):
+            magnitude = torch.from_numpy(magnitude).to(self.window.device)
+        if isinstance(phase, np.ndarray):
+            phase = torch.from_numpy(phase).to(self.window.device)
+            
+        complex_spec = magnitude * torch.exp(phase * 1j)
+        inverse_transform = torch.istft(
+            complex_spec,
+            self.filter_length, self.hop_length, self.win_length, 
+            window=self.window.to(complex_spec.device)
+        )
+        return inverse_transform.unsqueeze(1)
+
+
 def get_synthesis_module_instance(config_path, checkpoint_path, device=None):
     """
     Returns a singleton instance of SynthesisModule.
@@ -542,17 +567,22 @@ class SynthesisModule:
         return z, w_ceil, g
 
     def _istft_finalize(self, full_complex_spec):
-        """スペクトログラムから波形を再構成 (Multi-stream対応)"""
+        """Reconstruct waveform from spectrogram using iSTFT"""
         device = full_complex_spec.device
         final_spec = torch.abs(full_complex_spec)
         final_phase = torch.angle(full_complex_spec)
         
+        # Determine STFT parameters from model config if available
+        n_fft = getattr(self.model.dec, 'gen_istft_n_fft', self.hps.data.filter_length)
+        hop_size = getattr(self.model.dec, 'gen_istft_hop_size', self.hps.data.hop_length)
+        
         stft = TorchSTFT(
-            filter_length=self.model.dec.gen_istft_n_fft, 
-            hop_length=self.model.dec.gen_istft_hop_size, 
-            win_length=self.model.dec.gen_istft_n_fft
+            filter_length=n_fft, 
+            hop_length=hop_size, 
+            win_length=n_fft
         ).to(device)
 
+        # Multi-band iSTFT processing
         if hasattr(self.model.dec, 'subbands') and self.model.dec.subbands > 1:
             b, s, f, t = final_spec.shape
             spec_reshaped = final_spec.view(b * s, f, t)
@@ -561,7 +591,7 @@ class SynthesisModule:
             y_mb_hat = stft.inverse(spec_reshaped, phase_reshaped)
             y_mb_hat = y_mb_hat.squeeze(1).view(b, s, -1)
 
-            if self.model.ms_istft_vits:
+            if getattr(self.model, 'ms_istft_vits', False):
                 y_mb_hat = F.conv_transpose1d(
                     y_mb_hat, 
                     self.model.dec.updown_filter.to(device) * self.model.dec.subbands, 
@@ -574,8 +604,12 @@ class SynthesisModule:
                     pqmf = PQMF(device)
                     audio_tensor = pqmf.synthesis(y_mb_hat.unsqueeze(2)) 
                 except ImportError:
+                    # Fallback: simple sum (ensure tensor)
+                    if isinstance(y_mb_hat, np.ndarray):
+                        y_mb_hat = torch.from_numpy(y_mb_hat).to(device)
                     audio_tensor = torch.sum(y_mb_hat, dim=1, keepdim=True)
         else:
+            # Single-band iSTFT
             audio_tensor = stft.inverse(final_spec, final_phase)
 
         return audio_tensor[0, 0].data.cpu().float().numpy()
