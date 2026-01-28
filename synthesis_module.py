@@ -96,10 +96,23 @@ class TorchSTFT(torch.nn.Module):
         )
         return inverse_transform.unsqueeze(1)
 
-# --- 文節分割ヘルパー関数 ---
 def split_text_to_bunsetsu(text):
     """MeCabを用いてテキストを文節単位のリストに分割する"""
-    tagger = MeCab.Tagger(f'-d {unidic.DICDIR}')
+    if MeCab is None:
+        raise RuntimeError("MeCab is not installed. Please install 'mecab-python3' and a dictionary.")
+    
+    # 辞書パスの自動判定（unidic-liteなど）
+    try:
+        import unidic_lite
+        tagger = MeCab.Tagger(f"-d {unidic_lite.get_path()}")
+    except ImportError:
+        # システム辞書を使用
+        try:
+            tagger = MeCab.Tagger()
+        except RuntimeError:
+             # 辞書が見つからない場合への対処
+            tagger = MeCab.Tagger("-r /dev/null -d /usr/local/lib/mecab/dic/ipadic") # フォールバック例
+
     node = tagger.parseToNode(text)
     chunks = []
     current_chunk = ""
@@ -127,6 +140,7 @@ def split_text_to_bunsetsu(text):
     if current_chunk:
         chunks.append(current_chunk)
     return chunks
+
 
 
 
@@ -559,19 +573,25 @@ class SynthesisModule:
 
     def synthesize_cond2_shared(self, z, w_ceil, g, bunsetsu_phonemes):
         """
-        Cond 2: スペクトログラム単純接続 (Strict分割 / Shared Encoding)
-        計算済みの潜在変数 z, w, g と、文節ごとの音素リストを受け取り、
-        文節単位でデコードしてスペクトログラム上で結合します。
+        [Cond 2: 潜在変数からの生成]
+        計算済みの latent variables (z, w, g) と 文節リスト を受け取り、
+        文節単位でデコードしてスペクトログラム接続を行います。
+        
+        Args:
+            z (Tensor): 潜在変数 [B, C, T_frame]
+            w_ceil (Tensor): 音素継続長 [B, 1, T_phoneme]
+            g (Tensor): 話者埋め込み [B, C, 1] (None可)
+            bunsetsu_phonemes (List[str]): 文節ごとの音素文字列リスト
         """
-        # z, w, g は torch.Tensor であることを前提とします
-        # w_ceil がバッチ次元を持つ場合 (B, 1, T_phoneme) -> (T_phoneme,) に平坦化
-        w_ceil_flat = w_ceil.squeeze()
+        # --- 引数チェック ---
+        if not isinstance(bunsetsu_phonemes, list):
+            raise TypeError(f"bunsetsu_phonemes must be a list, got {type(bunsetsu_phonemes)}. "
+                            "Check argument order: (z, w, g, bunsetsu_phonemes)")
 
-        # 文節ごとの音素数（chunk_counts）を計算
+        w_ceil_flat = w_ceil.squeeze()
         chunk_counts = []
         for ph in bunsetsu_phonemes:
             if not ph: continue
-            # 音素文字列からID列の長さを取得
             ids = self._get_text_from_phonemes(ph)
             chunk_counts.append(len(ids))
 
@@ -579,58 +599,25 @@ class SynthesisModule:
         current_ph_idx = 0
         current_z_frame = 0
         
-        # 3. 文節ごとのデコードと結合
-        # (self.model.dec を使ってデコード)
         with torch.no_grad():
             for count in chunk_counts:
-                # この文節に対応する duration を取得
                 durations = w_ceil_flat[current_ph_idx : current_ph_idx + count]
-                # フレーム数（zの長さ）を計算
+                if len(durations) == 0: continue
+
                 z_len = int(torch.sum(durations).item())
-                
                 z_end_frame = current_z_frame + z_len
-                # 範囲チェック
                 if z_end_frame > z.shape[2]: 
                     z_end_frame = z.shape[2]
                 
-                # z をスライス
                 z_chunk = z[:, :, current_z_frame : z_end_frame]
                 
                 if z_chunk.shape[2] > 0:
-                    # デコーダーからスペックと位相を取得
-                    # モデルによっては戻り値の個数が異なる場合があるため注意
-                    # 通常のVITS: o, logs, x_mask, (z, z_p, m_p, logs_p) ... ではなく
-                    # Generatorのforwardあるいはdec(z)を呼ぶ
-                    
-                    # VITSのGenerator.forward は通常 (z, g=g) を受け取るが、
-                    # ここではスペック接続のために内部の dec を呼び出すか、
-                    # もしくは dec が返す (spec, phase) を期待している
-                    
-                    # infer3.ipynb のロジックに合わせるため、Generatorの構造に依存します。
-                    # 通常の SynthesizerTrn なら self.model.dec(z, g=g) で波形が返るが、
-                    # ここでは「スペクトログラム接続」なので、self.model.dec が spec, phase を返す改造版であるか、
-                    # あるいは中間層にアクセスする必要があります。
-                    
-                    # ★重要: 前回のコードに基づき、self.model.dec が (wav, something, spec, phase) を返すと仮定、
-                    # または self.model.dec ではなく self.model.dec.forward_spec などのメソッドがあるか確認が必要です。
-                    # ここでは一般的なMB-iSTFT-VITSの実装(decがspec, phaseを返す)と仮定します。
-                    
-                    # もし self.model.dec(z) が波形しか返さない場合、この手法（Cond2）は使えません。
-                    # User提供のipynbの文脈から、decがspec/phaseを返すと想定します。
+                    # モデルによっては返り値の形式が異なるため、タプル展開で安全に取得
                     ret = self.model.dec(z_chunk, g=g)
-                    
-                    # 戻り値の展開（実装によって異なる可能性があります）
-                    # パターンA: wav, spec, phase
-                    # パターンB: wav, (spec, phase)
-                    # パターンC: wav (spec, phaseは返さない -> エラーになる)
-                    
-                    # 安全策: 戻り値の長さを確認して処理
                     if isinstance(ret, tuple):
-                         # 多くのMB-iSTFT-VITS改造版では最後の方にspec, phaseがある
-                        spec = ret[-2]
-                        phase = ret[-1]
+                        spec, phase = ret[-2], ret[-1]
                     else:
-                        raise RuntimeError("Model decoder did not return spec/phase needed for Cond2 synthesis.")
+                        raise RuntimeError("Decoder output format mismatch. Expected spec/phase.")
 
                     complex_chunk = spec * torch.exp(1j * phase)
                     
@@ -644,8 +631,41 @@ class SynthesisModule:
                 if current_z_frame >= z.shape[2]: break
 
             if full_complex_spec is None: return np.array([])
-            
-            # 4. iSTFT で波形に戻す
             audio = self._istft_finalize(full_complex_spec)
             return audio
 
+    def synthesize_cond2_auto(self, raw_text, sid=0, noise_scale=1.0, noise_scale_w=1.0, length_scale=1.0):
+        """
+        [Cond 2: 全自動モード]
+        テキストを受け取り、内部で文節分割・Latent生成・接続合成を一括で行います。
+        """
+        self.model.eval()
+        sid_tensor = torch.LongTensor([int(sid)]).to(self.device)
+
+        # 1. 文節分割
+        bunsetsu_chunks = self._get_bunsetsu_chunks_mecab(raw_text)
+        
+        # 2. 全体ID列作成
+        all_phoneme_ids = []
+        for ph in bunsetsu_chunks:
+            if not ph: continue
+            ids = self._get_text_from_phonemes(ph)
+            all_phoneme_ids.extend(ids.tolist())
+            
+        if not all_phoneme_ids:
+            return np.array([])
+        
+        stn_tst = torch.LongTensor(all_phoneme_ids)
+        
+        with torch.no_grad():
+            x_tst = stn_tst.to(self.device).unsqueeze(0)
+            x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
+            
+            # 3. Latent生成 (z, w, g)
+            z, w_ceil, g = self._get_z_and_phoneme_durations(
+                x_tst, x_tst_lengths, sid_tensor, 
+                noise_scale, noise_scale_w, length_scale
+            )
+            
+            # 4. 接続合成
+            return self.synthesize_cond2_shared(z, w_ceil, g, bunsetsu_chunks)
