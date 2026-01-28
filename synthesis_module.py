@@ -128,8 +128,8 @@ def split_text_to_bunsetsu(text):
     
     # 辞書パスの自動判定（unidic-liteなど）
     try:
-        import unidic_lite
-        tagger = MeCab.Tagger(f"-d {unidic_lite.get_path()}")
+        
+        tagger = MeCab.Tagger(f"-d {unidic.get_path()}")
     except ImportError:
         # システム辞書を使用
         try:
