@@ -714,3 +714,30 @@ class SynthesisModule:
             
             # 4. 接続合成
             return self.synthesize_cond2_shared(z, w_ceil, g, bunsetsu_chunks)
+        
+    def synthesize_cond4_shared(self, z, g):
+        """
+        Cond 4: 共有された z をそのまま一括デコード (Topline / Full Decode)
+        Args:
+            z (Tensor): [B, C, T_frame]
+            g (Tensor): [B, C, 1]
+        """
+        # Tensor型とデバイスの保証
+        if isinstance(z, np.ndarray):
+            z = torch.from_numpy(z).to(self.device)
+        if isinstance(g, np.ndarray):
+            g = torch.from_numpy(g).to(self.device)
+
+        with torch.no_grad():
+            # 一括デコード
+            ret = self.model.dec(z, g=g)
+            
+            if isinstance(ret, tuple):
+                spec = ret[-2]
+                phase = ret[-1]
+            else:
+                 raise RuntimeError("Decoder did not return spec/phase (Cond4 requires it).")
+
+            full_complex_spec = spec * torch.exp(1j * phase)
+            
+        return self._istft_finalize(full_complex_spec)
