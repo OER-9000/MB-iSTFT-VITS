@@ -13,6 +13,7 @@ import numpy as np
 from scipy.io.wavfile import write as write_wav
 import platform
 import MeCab
+import unidic
 
 # --- Module-level cache for SynthesisModule instance ---
 _synthesizer_instance = None
@@ -118,10 +119,10 @@ class SynthesisModule:
         utils.load_checkpoint(checkpoint_path, self.model, None)
         print("Model loaded successfully.")
 
-        print("Initializing Phonemizer and MeCab Tagger...")
+        print("Initializing Phonemizer and MeCab Tagger with unidic-lite...")
         self.phonemizer = Phonemizer()
-        # Note: This requires 'mecab-python3' and a MeCab system installation with a dictionary.
-        self.mecab_tagger = MeCab.Tagger()
+        # Use unidic-lite dictionary installed via pip
+        self.mecab_tagger = MeCab.Tagger(f"-d {unidic.DICDIR}")
         print("Phonemizer and MeCab Tagger initialized.")
 
     def get_speaker_count(self):
