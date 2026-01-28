@@ -374,54 +374,73 @@ class SynthesisModule:
 
         return z.data.cpu().float().numpy(), w.data.cpu().float().numpy(), chunk_phoneme_counts, bunsetsu_phonemes
 
-    def synthesize_from_shared_latents(self, z, w, chunk_counts, speaker_id):
+    def prepare_shared_latents(self, text, sid=0, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0):
         """
-        Synthesizes audio by decoding shared latents chunk by chunk and concatenating spectrograms.
+        テキストから Cond 2 合成に必要な潜在変数 (z, w, g) と文節リストを一括で準備します。
+        
+        Returns:
+            z (Tensor): 潜在変数 [B, C, T_frame]
+            w_ceil (Tensor): 音素継続長 [B, 1, T_phoneme]
+            g (Tensor): 話者埋め込み [B, C, 1] (話者なしモデルの場合はNone)
+            bunsetsu_chunks (List[str]): 文節ごとの音素文字列リスト
         """
-        if z is None: return np.array([])
+        # Speaker ID setup
+        sid_tensor = torch.LongTensor([int(sid)]).to(self.device)
+        
+        # 1. 文節分割 & 音素列変換
+        bunsetsu_chunks = self._get_bunsetsu_chunks_mecab(text)
+        
+        # 全体の音素ID列を作成
+        all_phoneme_ids = []
+        for ph in bunsetsu_chunks:
+            if not ph: continue
+            ids = self._get_text_from_phonemes(ph)
+            all_phoneme_ids.extend(ids.tolist())
+            
+        if not all_phoneme_ids:
+            return None, None, None, []
 
-        # Get speaker embedding 'g'
-        with torch.no_grad():
-            sid = torch.LongTensor([speaker_id]).to(self.device)
-            g = self.model.emb_g(sid).unsqueeze(-1)
-
-        w_flat = torch.from_numpy(w).to(self.device)
-        z_tensor = torch.from_numpy(z).to(self.device).unsqueeze(0) # Add batch dim
-
-        full_audio_mb = None # Multi-band audio tensor
-        current_ph_idx = 0
-        current_z_frame = 0
+        stn_tst = torch.LongTensor(all_phoneme_ids)
         
         with torch.no_grad():
-            for count in chunk_counts:
-                z_len = int(torch.sum(w_flat[current_ph_idx : current_ph_idx + count]).item())
-                
-                z_end_frame = current_z_frame + z_len
-                if z_end_frame > z_tensor.shape[2]: z_end_frame = z_tensor.shape[2]
-                
-                z_chunk = z_tensor[:, :, current_z_frame : z_end_frame]
-                
-                if z_chunk.shape[2] > 0:
-                    # Use the decode method of the model to get post-net output
-                    o_chunk, _, _, _ = self.model.decode(z_chunk, g=g)
-                    
-                    if full_audio_mb is None:
-                        full_audio_mb = o_chunk
-                    else:
-                        full_audio_mb = torch.cat([full_audio_mb, o_chunk], dim=-1)
-
-                current_ph_idx += count
-                current_z_frame = z_end_frame
-                if current_z_frame >= z_tensor.shape[2]: break
-
-        if full_audio_mb is None: return np.array([])
-
-        # Final iSTFT
-        with torch.no_grad():
-            audio = self.model.mb_istft(full_audio_mb, self.model.pqmf)
-            audio = audio.squeeze().cpu().float().numpy()
+            x_tst = stn_tst.to(self.device).unsqueeze(0)
+            x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
             
-        return audio
+            # --- Encoder & Duration Predictor ---
+            x, m_p, logs_p, x_mask = self.model.enc_p(x_tst, x_tst_lengths)
+            
+            # g (Speaker Embedding) の取得
+            if self.model.n_speakers > 0:
+                g = self.model.emb_g(sid_tensor).unsqueeze(-1) # [B, H, 1]
+            else:
+                g = None
+
+            logw = self.model.dp(x, x_mask, g=g)
+            w = torch.exp(logw) * x_mask * length_scale
+            w_ceil = torch.ceil(w)
+            
+            # --- Expand (Alignment) ---
+            B, _, T_phoneme = w_ceil.shape
+            T_frame = int(torch.sum(w_ceil).item())
+            
+            attn_mask = torch.zeros(B, T_phoneme, T_frame).to(self.device)
+            w_ceil_flat = w_ceil.squeeze()
+            current_frame = 0
+            for i, dur in enumerate(w_ceil_flat):
+                d = int(dur.item())
+                if d > 0:
+                    attn_mask[0, i, current_frame : current_frame + d] = 1.0
+                    current_frame += d
+            
+            m_p = torch.matmul(m_p, attn_mask)
+            logs_p = torch.matmul(logs_p, attn_mask)
+
+            # --- Flow (Get z) ---
+            y_mask = torch.ones(B, 1, T_frame).to(self.device)
+            z_p = m_p + torch.randn_like(m_p, dtype=torch.float) * torch.exp(logs_p) * noise_scale
+            z = self.model.flow(z_p, y_mask, g=g, reverse=True)
+
+        return z, w_ceil, g, bunsetsu_chunks
     
     def _get_text_from_phonemes(self, phonemes):
         """音素文字列をID列に変換"""
