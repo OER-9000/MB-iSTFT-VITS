@@ -4,5 +4,4 @@ pyopenjtalk
 scipy
 Unidecode
 mecab-python3
-Unidic
 unidic-lite
