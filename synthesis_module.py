@@ -13,7 +13,7 @@ import numpy as np
 from scipy.io.wavfile import write as write_wav
 import platform
 import MeCab
-import unidic_lite
+import unidic
 
 # --- Module-level cache for SynthesisModule instance ---
 _synthesizer_instance = None
@@ -99,7 +99,7 @@ class TorchSTFT(torch.nn.Module):
 # --- 文節分割ヘルパー関数 ---
 def split_text_to_bunsetsu(text):
     """MeCabを用いてテキストを文節単位のリストに分割する"""
-    tagger = MeCab.Tagger()
+    tagger = MeCab.Tagger(f'-d {unidic.DICDIR}')
     node = tagger.parseToNode(text)
     chunks = []
     current_chunk = ""
