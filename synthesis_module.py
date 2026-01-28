@@ -128,7 +128,7 @@ def split_text_to_bunsetsu(text):
     
     
      # Use unidic-lite dictionary installed via pip
-    tagger = MeCab.Tagger(f"-d {unidic.DICDIR}")
+    tagger = MeCab.Tagger(f"-d {dic_dir} -r /dev/null")
 
     node = tagger.parseToNode(text)
     chunks = []
