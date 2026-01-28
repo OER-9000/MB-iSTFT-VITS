@@ -14,6 +14,8 @@ from scipy.io.wavfile import write as write_wav
 import platform
 import MeCab
 import unidic
+from stft import TorchSTFT
+from pqmf import PQMF
 
 # --- Module-level cache for SynthesisModule instance ---
 _synthesizer_instance = None
@@ -348,52 +350,171 @@ class SynthesisModule:
 
         return z.data.cpu().float().numpy(), w.data.cpu().float().numpy(), chunk_phoneme_counts, bunsetsu_phonemes
 
-    def synthesize_from_shared_latents(self, z, w, chunk_counts, speaker_id):
+    def _istft_finalize(self, full_complex_spec):
         """
-        Synthesizes audio by decoding shared latents chunk by chunk and concatenating spectrograms.
+        Multi-stream iSTFTに対応した波形再構成関数。
+        full_complex_spec shape: [Batch, Subbands, Freq, Time]
+        """
+        device = full_complex_spec.device
+        final_spec = torch.abs(full_complex_spec)
+        final_phase = torch.angle(full_complex_spec)
+        
+        stft = TorchSTFT(
+            filter_length=self.hps.data.filter_length,
+            hop_length=self.hps.data.hop_length,
+            win_length=self.hps.data.filter_length,
+            center=False
+        ).to(device)
+
+        # Multi-stream処理の判定
+        if hasattr(self.model.dec, 'subbands') and self.model.dec.subbands > 1:
+            # [B, S, F, T] -> [B*S, F, T] に変形してiSTFT
+            b, s, f, t = final_spec.shape
+            spec_reshaped = final_spec.view(b * s, f, t)
+            phase_reshaped = final_phase.view(b * s, f, t)
+            
+            y_mb_hat = stft.inverse(spec_reshaped, phase_reshaped) # -> [B*S, 1, Time_sub]
+            y_mb_hat = y_mb_hat.squeeze(1).view(b, s, -1)          # -> [B, S, Time_sub]
+
+            # 合成フィルタ (Synthesis Filter Bank)
+            if self.model.ms_istft_vits: # self.model.ms_istft_vits で判定
+                # 学習済みアップサンプリングフィルタを使用
+                y_mb_hat = F.conv_transpose1d(
+                    y_mb_hat, 
+                    self.model.dec.updown_filter.to(device) * self.model.dec.subbands, 
+                    stride=self.model.dec.subbands
+                )
+                audio_tensor = self.model.dec.multistream_conv_post(y_mb_hat)
+            else:
+                # PQMFまたは単純加算 (Fallback)
+                # この部分はMultiband_iSTFT_Generatorの場合に相当するが、
+                # ms_istft_vitsがTrueならMultistream_iSTFT_Generatorが使われるはず。
+                try:
+                    from pqmf import PQMF
+                    pqmf = PQMF(device)
+                    audio_tensor = pqmf.synthesis(y_mb_hat.unsqueeze(2)) 
+                except ImportError:
+                     audio_tensor = torch.sum(y_mb_hat, dim=1, keepdim=True)
+        else:
+            # 通常のiSTFT (Single stream)
+            audio_tensor = stft.inverse(final_spec, final_phase)
+
+        return audio_tensor[0, 0].data.cpu().float().numpy()
+
+    def synthesize_spectrogram_concat_validation(self, z, w, chunk_counts, speaker_id):
+        """
+        Synthesizes audio by concatenating spectrograms, as requested by the user for validation purposes.
+        This implementation now correctly handles MS-iSTFT-VITS sub-band reconstruction.
         """
         if z is None: return np.array([])
 
-        # Get speaker embedding 'g'
         with torch.no_grad():
             sid = torch.LongTensor([speaker_id]).to(self.device)
             g = self.model.emb_g(sid).unsqueeze(-1)
 
-        w_flat = torch.from_numpy(w).to(self.device)
-        z_tensor = torch.from_numpy(z).to(self.device).unsqueeze(0) # Add batch dim
+            w_flat = torch.from_numpy(w).to(self.device)
+            z_tensor = torch.from_numpy(z).to(self.device).unsqueeze(0)
 
-        full_audio_mb = None # Multi-band audio tensor
-        current_ph_idx = 0
-        current_z_frame = 0
-        
-        with torch.no_grad():
+            full_complex_spec_subband = None
+            current_ph_idx = 0
+            current_z_frame = 0
+            
             for count in chunk_counts:
                 z_len = int(torch.sum(w_flat[current_ph_idx : current_ph_idx + count]).item())
-                
                 z_end_frame = current_z_frame + z_len
                 if z_end_frame > z_tensor.shape[2]: z_end_frame = z_tensor.shape[2]
                 
                 z_chunk = z_tensor[:, :, current_z_frame : z_end_frame]
                 
                 if z_chunk.shape[2] > 0:
-                    # Use the decode method of the model to get post-net output
-                    o_chunk, _, _, _ = self.model.decode(z_chunk, g=g)
+                    # dec returns: y_g_hat, y_mb_hat, spec, phase
+                    # spec and phase are in sub-band format: [B, subbands, F, T]
+                    _, _, spec_chunk, phase_chunk = self.model.dec(z_chunk, g=g)
                     
-                    if full_audio_mb is None:
-                        full_audio_mb = o_chunk
+                    complex_chunk_subband = spec_chunk * torch.exp(1j * phase_chunk)
+                    
+                    if full_complex_spec_subband is None:
+                        full_complex_spec_subband = complex_chunk_subband
                     else:
-                        full_audio_mb = torch.cat([full_audio_mb, o_chunk], dim=-1)
-
+                        full_complex_spec_subband = torch.cat([full_complex_spec_subband, complex_chunk_subband], dim=-1)
+                
                 current_ph_idx += count
                 current_z_frame = z_end_frame
                 if current_z_frame >= z_tensor.shape[2]: break
 
-        if full_audio_mb is None: return np.array([])
-
-        # Final iSTFT
-        with torch.no_grad():
-            audio = self.model.mb_istft(full_audio_mb, self.model.pqmf)
-            audio = audio.squeeze().cpu().float().numpy()
+            if full_complex_spec_subband is None: return np.array([])
             
-        return audio
+            # Final iSTFT using the new _istft_finalize, which handles sub-band reconstruction
+            return self._istft_finalize(full_complex_spec_subband)
+
+    def _istft_finalize(self, complex_spec):
+        """
+        Performs iSTFT on a full-band complex spectrogram to get the final audio waveform.
+        """
+        n_fft = self.hps.data.filter_length
+        hop_length = self.hps.data.hop_length
+        win_length = self.hps.data.win_length
+        
+        stft = TorchSTFT(filter_length=n_fft, hop_length=hop_length, win_length=win_length, center=False).to(self.device)
+        
+        spec = torch.abs(complex_spec)
+        phase = torch.angle(complex_spec)
+        
+        audio = stft.inverse(spec, phase)
+        
+        return audio.squeeze(0).cpu().float().numpy()
+
+    def synthesize_spectrogram_concat_validation(self, z, w, chunk_counts, speaker_id):
+        """
+        Synthesizes audio by concatenating spectrograms, as requested by the user for validation purposes.
+        This implementation is for MS-iSTFT-VITS and uses only the first sub-band for iSTFT.
+        """
+        if z is None: return np.array([])
+
+        with torch.no_grad():
+            sid = torch.LongTensor([speaker_id]).to(self.device)
+            g = self.model.emb_g(sid).unsqueeze(-1)
+
+            w_flat = torch.from_numpy(w).to(self.device)
+            z_tensor = torch.from_numpy(z).to(self.device).unsqueeze(0)
+
+            full_complex_spec_subband = None
+            current_ph_idx = 0
+            current_z_frame = 0
+            
+            for count in chunk_counts:
+                z_len = int(torch.sum(w_flat[current_ph_idx : current_ph_idx + count]).item())
+                z_end_frame = current_z_frame + z_len
+                if z_end_frame > z_tensor.shape[2]: z_end_frame = z_tensor.shape[2]
+                
+                z_chunk = z_tensor[:, :, current_z_frame : z_end_frame]
+                
+                if z_chunk.shape[2] > 0:
+                    # dec returns: y_g_hat, y_mb_hat, spec, phase
+                    # spec and phase are in sub-band format: [B, subbands, F, T]
+                    _, _, spec_chunk, phase_chunk = self.model.dec(z_chunk, g=g)
+                    
+                    complex_chunk_subband = spec_chunk * torch.exp(1j * phase_chunk)
+                    
+                    if full_complex_spec_subband is None:
+                        full_complex_spec_subband = complex_chunk_subband
+                    else:
+                        full_complex_spec_subband = torch.cat([full_complex_spec_subband, complex_chunk_subband], dim=-1)
+                
+                current_ph_idx += count
+                current_z_frame = z_end_frame
+                if current_z_frame >= z_tensor.shape[2]: break
+
+            if full_complex_spec_subband is None: return np.array([])
+            
+            # --- WARNING: Sub-band to Full-band Conversion ---
+            # The following step is a simplification for validation purposes and is NOT acoustically correct
+            # for a multi-band model like MS-iSTFT-VITS. It uses only the first sub-band,
+            # which will result in low-frequency, muffled audio.
+            # The correct approach for this architecture is to concatenate the decoded audio waveforms.
+            print("Warning: Using only the first sub-band for spectrogram-based synthesis. The resulting audio will be muffled.")
+            full_complex_spec_band0 = full_complex_spec_subband[:, 0, :, :]
+            
+            # Final iSTFT on the (incorrectly) constructed full-band spectrogram
+            return self._istft_finalize(full_complex_spec_band0)
 
