@@ -14,7 +14,7 @@ import numpy as np
 from scipy.io.wavfile import write as write_wav
 import platform
 import MeCab
-import unidic_lite
+import unidic
 
 # --- Module-level cache for SynthesisModule instance ---
 _synthesizer_instance = None
@@ -127,8 +127,8 @@ def split_text_to_bunsetsu(text):
     if MeCab is None:
         raise RuntimeError("MeCab is not installed. Please install 'mecab-python3' and a dictionary.")
     
-    dic_dir = getattr(unidic_lite, 'DICDIR', None)
-     # Use unidic-lite dictionary installed via pip
+    dic_dir = getattr(unidic, 'DICDIR', None)
+     # Use unidic dictionary installed via pip
     tagger = MeCab.Tagger(f"-d {dic_dir} -r /dev/null")
 
     node = tagger.parseToNode(text)
