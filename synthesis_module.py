@@ -838,7 +838,7 @@ class SynthesisModule:
                             # delay < 0: Target is Late. Cut Previous Tail.
                             
                             aligned_wav = valid_chunk_wav
-                            
+                            print(delay)
                             if delay < 0:
                                 # Targetが進んでいる分をカットして合わせる
                                 if delay < len(aligned_wav):
@@ -904,7 +904,7 @@ class SynthesisModule:
             
         return self._istft_finalize(full_complex_spec)
 
-    # ... (既存のメソッド) ...
+
 
     def verify_delay_estimation(self):
         """
