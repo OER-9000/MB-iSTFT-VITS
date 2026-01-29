@@ -829,7 +829,7 @@ class SynthesisModule:
                         curr_ref = valid_chunk_wav[:expected_overlap_samples]
                         
                         valid_overlap_len = min(len(prev_ref), len(curr_ref))
-                        print("overlaplen "valid_overlap_len)
+                        print("overlaplen ", valid_overlap_len)
                         # --- 安全チェック: オーバーラップが短すぎる場合は位置合わせをスキップ ---
                         if valid_overlap_len > 1024: 
                             # ラグ検出
@@ -842,7 +842,7 @@ class SynthesisModule:
                             aligned_wav = valid_chunk_wav
                             
                             # 位置合わせ
-                            print("delay "delay)
+                            print("delay ", delay)
                             if delay > 0:
                                 if delay < len(aligned_wav):
                                     aligned_wav = aligned_wav[delay:]
