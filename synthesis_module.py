@@ -750,11 +750,7 @@ class SynthesisModule:
 
     def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=5, max_shift_samples=300):
         """
-        Cond 3 + Group Delay Correction:
-        1. 文節ごとにオーバーラップ有りでデコード -> スペクトログラム
-        2. オーバーラップ部を一時的に波形に戻してラグ(delay)をFFT相互相関で推定
-        3. 推定したラグに基づき、現在のスペクトログラムに群遅延補正(線形位相シフト)を適用
-        4. iSTFTで波形に戻し、波形領域でクロスフェード結合
+        Cond 3: Robust Waveform Alignment
         """
         if isinstance(z, np.ndarray): z = torch.from_numpy(z).to(self.device)
         if isinstance(w_ceil, np.ndarray): w_ceil = torch.from_numpy(w_ceil).to(self.device)
@@ -768,7 +764,7 @@ class SynthesisModule:
             chunk_counts.append(len(ids))
 
         full_audio = None
-        prev_tail_overlap_wav = None
+        prev_tail_overlap = None
         
         current_ph_idx = 0
         current_z_frame = 0
@@ -783,86 +779,76 @@ class SynthesisModule:
 
                 chunk_z_len = int(torch.sum(durations).item())
                 
-                # オーバーラップを含めてデコード
+                # Overlap decode
                 z_end_nominal = current_z_frame + chunk_z_len
                 z_end_decode = z_end_nominal + z_overlap_frames
-                if z_end_decode > z.shape[2]: 
-                    z_end_decode = z.shape[2]
+                if z_end_decode > z.shape[2]: z_end_decode = z.shape[2]
                 
                 z_chunk = z[:, :, current_z_frame : z_end_decode]
                 
                 if z_chunk.shape[2] > 0:
                     ret = self.model.dec(z_chunk, g=g)
-                    if isinstance(ret, tuple):
-                        spec, phase = ret[-2], ret[-1]
-                    else:
-                         raise RuntimeError("Expected spec/phase from decoder.")
+                    if isinstance(ret, tuple): spec, phase = ret[-2], ret[-1]
+                    else: raise RuntimeError("Decoder issue")
                     
                     complex_chunk = spec * torch.exp(1j * phase)
-                    
-                    # --- 補正と結合 ---
+                    chunk_wav = self._istft_finalize(complex_chunk) 
                     
                     if full_audio is None:
-                        # 初回はそのままiSTFT
-                        chunk_wav = self._istft_finalize(complex_chunk)
                         full_audio = chunk_wav
                     else:
-                        # 1. ラグ推定のために一時的に波形化 (iSTFT)
-                        curr_wav_temp = self._istft_finalize(complex_chunk)
-                        
-                        # 比較領域
-                        if prev_tail_overlap_wav is None:
-                             prev_ref = full_audio[-expected_overlap_samples:]
-                        else:
-                             prev_ref = prev_tail_overlap_wav
-
-                        curr_ref = curr_wav_temp[:expected_overlap_samples]
+                        if prev_tail_overlap is None: prev_ref = full_audio[-expected_overlap_samples:]
+                        else: prev_ref = prev_tail_overlap
+                        curr_ref = chunk_wav[:expected_overlap_samples]
                         
                         valid_overlap = min(len(prev_ref), len(curr_ref))
                         
-                        if valid_overlap > 100:
-                            # 2. ラグ推定
+                        if valid_overlap > 128:
+                            # Lag detection
                             delay = self._find_best_time_delay(
                                 prev_ref[-valid_overlap:], 
                                 curr_ref[:valid_overlap], 
                                 max_shift_samples
                             )
                             
-                            # 3. 群遅延補正 (スペクトログラム上で位相シフト)
-                            if delay != 0:
-                                complex_chunk = self._apply_group_delay_correction(complex_chunk, delay)
-                                # 補正後に再度波形化
-                                chunk_wav = self._istft_finalize(complex_chunk)
-                            else:
-                                chunk_wav = curr_wav_temp
+                            # Alignment Logic based on NEW polarity
+                            # delay > 0: Target is Advanced (Early). Needs to start later -> Slice Target
+                            # delay < 0: Target is Delayed (Late). Needs to start earlier -> Slice Previous (Reference)
                             
-                            # 4. クロスフェード結合 (Waveform OLA)
-                            # 補正済みなので、位置はずらさず(start_off=0) OLAする
-                            # ただし群遅延補正は循環シフトを伴うため、両端にノイズが乗る可能性がある
-                            # OLAによってその端の部分をうまくブレンドする
+                            aligned_wav = chunk_wav
                             
-                            cross_len = valid_overlap
-                            # フェードアウト/イン
-                            if cross_len > 0:
-                                fade_out = full_audio[-cross_len:]
-                                fade_in = chunk_wav[:cross_len]
-                                
-                                alpha = np.linspace(0, 1, cross_len)
+                            if delay > 0:
+                                # Target is early, so we skip its beginning
+                                if delay < len(aligned_wav):
+                                    aligned_wav = aligned_wav[delay:]
+                            elif delay < 0:
+                                # Target is late (Delayed).
+                                # To sync, we effectively need to move previous audio back?
+                                # No, if Target is late relative to Previous, Previous ended too early?
+                                # We trim the end of Previous to match where Target starts.
+                                cut_from_prev = -delay
+                                if cut_from_prev < len(full_audio):
+                                    full_audio = full_audio[:-cut_from_prev]
+                                    
+                            # Crossfade
+                            xfade_len = min(valid_overlap, len(aligned_wav), 512)
+                            if xfade_len > 0:
+                                fade_out = full_audio[-xfade_len:]
+                                fade_in = aligned_wav[:xfade_len]
+                                alpha = np.linspace(0, 1, xfade_len)
                                 blended = fade_out * (1 - alpha) + fade_in * alpha
                                 
                                 full_audio = np.concatenate([
-                                    full_audio[:-cross_len],
+                                    full_audio[:-xfade_len],
                                     blended,
-                                    chunk_wav[cross_len:]
+                                    aligned_wav[xfade_len:]
                                 ])
                             else:
-                                full_audio = np.concatenate([full_audio, chunk_wav])
+                                full_audio = np.concatenate([full_audio, aligned_wav])
                         else:
-                            chunk_wav = curr_wav_temp
                             full_audio = np.concatenate([full_audio, chunk_wav])
 
-                    # 次回用に末尾保存
-                    prev_tail_overlap_wav = chunk_wav[-expected_overlap_samples:] if len(chunk_wav) > expected_overlap_samples else chunk_wav
+                    prev_tail_overlap = chunk_wav[-expected_overlap_samples:] if len(chunk_wav) > expected_overlap_samples else chunk_wav
 
                 current_ph_idx += count
                 current_z_frame = z_end_nominal 
