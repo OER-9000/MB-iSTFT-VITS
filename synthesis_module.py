@@ -895,4 +895,62 @@ class SynthesisModule:
             
         return self._istft_finalize(full_complex_spec)
 
-    
+    # ... (既存のメソッド) ...
+
+    def verify_delay_estimation(self):
+        """
+        遅延推定ロジックの精度を検証するテスト関数
+        """
+        print("=== Delay Estimation Verification ===")
+        
+        # 1. テスト信号作成 (ランダムノイズ)
+        np.random.seed(42)
+        sr = 24000
+        duration = 0.5 # seconds
+        original_signal = np.random.randn(int(sr * duration))
+        
+        # テストケース
+        test_delays = [0, 10, -10, 50, -50, 100, -100, 300, -300]
+        
+        passed = 0
+        
+        for true_delay in test_delays:
+            # Ref: 元の信号の中央部分
+            # Target: Refから true_delay 分ずらしたもの
+            
+            # 基準位置
+            center = len(original_signal) // 2
+            segment_len = 1024
+            
+            ref_seg = original_signal[center : center + segment_len]
+            
+            # Target作成
+            # true_delay > 0: Targetが遅れている (右にシフト) -> Refより前のデータが来る？
+            # ここでの定義再確認:
+            # find_best_time_delay(ref, tar) -> returns lag
+            # lag > 0 means Target is delayed (Target needs shift left)
+            
+            # Targetを「遅らせる」 = 波形全体を右にシフト
+            # Ref[t] と Target[t + delay] が一致する
+            # つまり Target[t] = Ref[t - delay]
+            
+            # 抽出範囲をずらす
+            tar_start = center - true_delay
+            tar_seg = original_signal[tar_start : tar_start + segment_len]
+            
+            # ノイズ付加 (実環境シミュレーション)
+            tar_seg = tar_seg + 0.01 * np.random.randn(len(tar_seg))
+            
+            # 推定実行
+            estimated_delay = self._find_best_time_delay(ref_seg, tar_seg, max_shift_samples=512)
+            
+            print(f"True Delay: {true_delay:4d} | Estimated: {estimated_delay:4d} | ", end="")
+            
+            if estimated_delay == true_delay:
+                print("OK")
+                passed += 1
+            else:
+                print("FAIL")
+
+        print(f"Result: {passed}/{len(test_delays)} passed.")
+        return passed == len(test_delays)
