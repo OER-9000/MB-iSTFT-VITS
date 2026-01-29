@@ -606,6 +606,109 @@ class SynthesisModule:
             audio_tensor = stft.inverse(final_spec, final_phase)
 
         return audio_tensor[0, 0].data.cpu().float().numpy()
+    
+    def _find_best_time_delay(self, ref_complex_spec, target_complex_spec, max_shift_samples=256):
+        """
+        [ipynbの相関定理に基づく実装]
+        1. iSTFTで波形(wav1_tail, wav2_head)に戻す
+        2. FFTで周波数領域へ (X1, X2)
+        3. xcor = IFFT(X1 * conj(X2))
+        4. ピーク検出でラグを特定
+        """
+        device = ref_complex_spec.device
+        n_fft_istft = getattr(self.model.dec, 'gen_istft_n_fft', self.hps.data.filter_length)
+        hop_length = getattr(self.model.dec, 'gen_istft_hop_size', self.hps.data.hop_length)
+        win_length = n_fft_istft
+        
+        window = torch.hann_window(win_length).to(device)
+        
+        # 1. iSTFTで波形抽出
+        # (B, C, F, T) -> (B, F, T) -> wav
+        if ref_complex_spec.dim() == 4:
+            ref_spec = ref_complex_spec.mean(dim=1)
+            tar_spec = target_complex_spec.mean(dim=1)
+        else:
+            ref_spec = ref_complex_spec
+            tar_spec = target_complex_spec
+
+        try:
+            # 短いセグメントでも動作するようにcenter=False等は状況によるが、デフォルトで実施
+            # 比較対象: 前のセグメントの末尾(ref) vs 今のセグメントの先頭(target)
+            ref_wav_t = torch.istft(ref_spec, n_fft_istft, hop_length, win_length, window=window)
+            tar_wav_t = torch.istft(tar_spec, n_fft_istft, hop_length, win_length, window=window)
+        except Exception:
+            return 0
+
+        # NumPyへ (Batch=0のみ対応)
+        wav1_tail = ref_wav_t[0].detach().cpu().numpy()
+        wav2_head = tar_wav_t[0].detach().cpu().numpy()
+        
+        # DCオフセット除去 (推奨)
+        wav1_tail -= np.mean(wav1_tail)
+        wav2_head -= np.mean(wav2_head)
+        
+        # 2. FFT計算 (サイズは波形長より大きく、2のべき乗が望ましい)
+        n_samples = max(len(wav1_tail), len(wav2_head))
+        fft_size = 1
+        while fft_size < n_samples * 2: # 線形畳み込みのため2倍確保
+            fft_size *= 2
+            
+        X1 = np.fft.fft(wav1_tail, fft_size)
+        X2 = np.fft.fft(wav2_head, fft_size)
+        
+        # 3. 相互相関 (相関定理: F^-1 [ X1 * conj(X2) ])
+        xcor = np.real(np.fft.ifft(X1 * np.conj(X2)))
+        
+        # 4. ピーク検出 (マスク適用)
+        # xcorのインデックス:
+        # 0 ~ max_shift: 正のラグ (wav2が遅れている/wav2を左にずらす必要がある)
+        # fft_size - max_shift ~ fft_size - 1: 負のラグ (wav2が進んでいる/wav2を右にずらす)
+        
+        mask = np.zeros_like(xcor)
+        mask[0 : max_shift_samples + 1] = 1.0
+        mask[-max_shift_samples : ] = 1.0
+        
+        # 絶対値ではなく実部ピーク(正の相関)を探すのが一般的
+        lagidx = np.argmax(xcor * mask)
+        
+        # ラグを符号付き整数に変換
+        if lagidx > fft_size // 2:
+            best_lag = lagidx - fft_size # 負の値 (wav2が進んでいる -> 右シフトが必要?)
+            # ここでの定義: IFFT(X1 * conj(X2)) のピークが -d にあるとき、x2(t) = x1(t-d)
+            # numpyのfft結果では、ピーク位置が「x2がどれだけ遅れているか」を表す(正なら遅れ)
+            # しかしIFFTの定義によっては符号が逆になることがある。
+            # 通常 xcor[tau] = sum x1[t] x2[t+tau] の定義だと、x2が左(未来)にあるとピークが正?
+            # ipynbの手法に従うと、「値が最大になる位置」がズレ量。
+            
+            # テスト的に: lagidx が マイナス(末尾)の場合、wav2を「遅らせる」必要がある
+            # _apply_phase_shift は「正の値」を受け取ると「左シフト（進める）」処理を行う実装になっている。
+            # なので、wav2が進んでいる(負のラグ)なら、wav2を遅らせる(右シフト)必要がある -> delay_samplesは負になるべき
+            pass 
+        else:
+            best_lag = lagidx # 正の値 (wav2が遅れている -> 左シフトが必要)
+
+        return best_lag
+
+    def _apply_phase_shift(self, complex_spec, delay_samples):
+        """
+        時間領域での遅延 (delay_samples) を周波数領域の位相シフトで補正する
+        delay_samples > 0: 波形を「進める」（左シフト）効果 (遅れを解消)
+        delay_samples < 0: 波形を「遅らせる」（右シフト）効果
+        """
+        device = complex_spec.device
+        n_freq = complex_spec.shape[-2]
+        n_fft = (n_freq - 1) * 2
+        
+        k = torch.arange(n_freq, device=device).float()
+        
+        # 位相回転: exp(j * 2*pi * k * d / N)
+        # d > 0 のとき、位相を加算することで波形は左にシフトする（進む）
+        phase_shift_rad = 2 * np.pi * k * delay_samples / n_fft
+        
+        phase_shift_rad = phase_shift_rad.view(1, 1, n_freq, 1)
+        rotator = torch.exp(1j * phase_shift_rad)
+        
+        return complex_spec * rotator
 
     def synthesize_cond2_shared(self, z, w_ceil, g, bunsetsu_phonemes):
         """
@@ -715,6 +818,107 @@ class SynthesisModule:
             # 4. 接続合成
             return self.synthesize_cond2_shared(z, w_ceil, g, bunsetsu_chunks)
         
+
+    def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=5, max_shift_samples=300):
+        if isinstance(z, np.ndarray): z = torch.from_numpy(z).to(self.device)
+        if isinstance(w_ceil, np.ndarray): w_ceil = torch.from_numpy(w_ceil).to(self.device)
+        if isinstance(g, np.ndarray): g = torch.from_numpy(g).to(self.device)
+
+        w_ceil_flat = w_ceil.squeeze()
+        chunk_counts = []
+        for ph in bunsetsu_phonemes:
+            if not ph: continue
+            ids = self._get_text_from_phonemes(ph)
+            chunk_counts.append(len(ids))
+
+        full_complex_spec = None
+        prev_tail_overlap = None
+        
+        current_ph_idx = 0
+        current_z_frame = 0
+        ratio = None 
+
+        with torch.no_grad():
+            for count in chunk_counts:
+                durations = w_ceil_flat[current_ph_idx : current_ph_idx + count]
+                if len(durations) == 0: continue
+
+                chunk_z_len = int(torch.sum(durations).item())
+                
+                z_end_nominal = current_z_frame + chunk_z_len
+                z_end_decode = z_end_nominal + z_overlap_frames
+                if z_end_decode > z.shape[2]: 
+                    z_end_decode = z.shape[2]
+                
+                z_chunk = z[:, :, current_z_frame : z_end_decode]
+                
+                if z_chunk.shape[2] > 0:
+                    ret = self.model.dec(z_chunk, g=g)
+                    if isinstance(ret, tuple):
+                        spec, phase = ret[-2], ret[-1]
+                    else:
+                        raise RuntimeError("Decoder did not return spec/phase.")
+                    
+                    complex_chunk = spec * torch.exp(1j * phase)
+                    
+                    if ratio is None:
+                        ratio = complex_chunk.shape[-1] / z_chunk.shape[-1] if z_chunk.shape[-1] > 0 else 1.0
+
+                    actual_z_overlap = max(0, z_chunk.shape[-1] - chunk_z_len)
+                    spec_overlap_len = int(actual_z_overlap * ratio)
+                    
+                    if full_complex_spec is None:
+                        full_complex_spec = complex_chunk
+                    else:
+                        if prev_tail_overlap is None: 
+                            prev_ref = full_complex_spec[..., -spec_overlap_len:]
+                        else:
+                            prev_ref = prev_tail_overlap
+                        
+                        curr_ref = complex_chunk[..., :spec_overlap_len]
+                        valid_overlap = min(prev_ref.shape[-1], curr_ref.shape[-1])
+                        
+                        if valid_overlap > 2:
+                            # 1. FFT相互相関による遅延検出 (Cond3)
+                            delay_samples = self._find_best_time_delay(
+                                prev_ref[..., :valid_overlap], 
+                                curr_ref[..., :valid_overlap], 
+                                max_shift_samples
+                            )
+                            
+                            # 2. 位相シフト補正
+                            if delay_samples != 0:
+                                complex_chunk = self._apply_phase_shift(complex_chunk, delay_samples)
+                                curr_ref = complex_chunk[..., :spec_overlap_len]
+
+                            # 3. OLA
+                            cross_len = min(valid_overlap, complex_chunk.shape[-1])
+                            if cross_len > 0:
+                                alpha = torch.linspace(0.0, 1.0, cross_len).to(self.device).view(1, 1, 1, cross_len)
+                                merged = prev_ref[..., :cross_len] * (1 - alpha) + curr_ref[..., :cross_len] * alpha
+                                full_complex_spec = torch.cat([
+                                    full_complex_spec[..., :-cross_len],
+                                    merged,
+                                    complex_chunk[..., cross_len:]
+                                ], dim=-1)
+                            else:
+                                full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
+                        else:
+                            full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
+                    
+                    next_overlap_spec_len = int(z_overlap_frames * ratio)
+                    if complex_chunk.shape[-1] >= next_overlap_spec_len:
+                        prev_tail_overlap = complex_chunk[..., -next_overlap_spec_len:]
+                    else:
+                        prev_tail_overlap = complex_chunk
+
+                current_ph_idx += count
+                current_z_frame = z_end_nominal 
+                if current_z_frame >= z.shape[2]: break
+
+            if full_complex_spec is None: return np.array([])
+            return self._istft_finalize(full_complex_spec)
+        
     def synthesize_cond4_shared(self, z, g):
         """
         Cond 4: 共有された z をそのまま一括デコード (Topline / Full Decode)
@@ -741,3 +945,5 @@ class SynthesisModule:
             full_complex_spec = spec * torch.exp(1j * phase)
             
         return self._istft_finalize(full_complex_spec)
+
+    
