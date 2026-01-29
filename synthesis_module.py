@@ -839,11 +839,11 @@ class SynthesisModule:
                             
                             aligned_wav = valid_chunk_wav
                             
-                            if delay > 0:
+                            if delay < 0:
                                 # Targetが進んでいる分をカットして合わせる
                                 if delay < len(aligned_wav):
                                     aligned_wav = aligned_wav[delay:]
-                            elif delay < 0:
+                            elif delay > 0:
                                 # Targetが遅れている -> 前の音声を削ってタイミングを合わせる
                                 cut_from_prev = -delay
                                 if cut_from_prev < len(full_audio):
