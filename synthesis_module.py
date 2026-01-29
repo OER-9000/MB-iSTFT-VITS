@@ -825,7 +825,7 @@ class SynthesisModule:
                         curr_ref = valid_chunk_wav[:expected_overlap_samples]
                         valid_overlap_len = min(len(prev_ref), len(curr_ref))
                         print(valid_overlap_len)
-                        if valid_overlap_len > 128:
+                        if valid_overlap_len > 1:
                             # 1. ラグ検出
                             delay = self._find_best_time_delay(
                                 prev_ref[-valid_overlap_len:], 
