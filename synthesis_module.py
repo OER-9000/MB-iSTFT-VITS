@@ -750,8 +750,8 @@ class SynthesisModule:
 
     def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=10, max_shift_samples=300):
         """
-        Cond 3: Robust Waveform Alignment with Pre-roll
-        プリロール(巻き戻し)デコードを行い、フェードインの影響を回避して接合します。
+        Cond 3: Waveform Alignment without Cross-fade
+        クロスフェードを行わず、時間ラグ補正（位相調整）のみを行って単純結合します。
         """
         if isinstance(z, np.ndarray): z = torch.from_numpy(z).to(self.device)
         if isinstance(w_ceil, np.ndarray): w_ceil = torch.from_numpy(w_ceil).to(self.device)
@@ -766,16 +766,23 @@ class SynthesisModule:
 
         full_audio = None
         prev_tail_overlap = None
-        
         current_ph_idx = 0
         current_z_frame = 0
         
+        # --- 時間ベースの設定 ---
         hop_length = getattr(self.model.dec, 'gen_istft_hop_size', self.hps.data.hop_length)
-        expected_overlap_samples = z_overlap_frames * hop_length
+        sampling_rate = self.hps.data.sampling_rate
         
-        # プリロール設定: iSTFTのフェードイン(n_fft/2)を回避するため、十分な余裕を持つ
-        preroll_frames = 5 
-        preroll_samples = preroll_frames * hop_length
+        # オーバーラップ時間: 0.15秒 (位置合わせ計算用)
+        OVERLAP_SEC = 0.15
+        expected_overlap_samples = int(sampling_rate * OVERLAP_SEC)
+        
+        # 必要なフレーム数
+        req_overlap_frames = int(expected_overlap_samples / hop_length) + 2
+        
+        # プリロール時間: 0.05秒
+        PREROLL_SEC = 0.05
+        preroll_frames = int((sampling_rate * PREROLL_SEC) / hop_length) + 2
 
         with torch.no_grad():
             for count in chunk_counts:
@@ -785,17 +792,15 @@ class SynthesisModule:
                 chunk_z_len = int(torch.sum(durations).item())
                 
                 # --- Pre-roll Logic ---
-                # 開始位置を少し戻す
                 z_start_nominal = current_z_frame
                 z_start_actual = max(0, current_z_frame - preroll_frames)
                 preroll_offset_frames = z_start_nominal - z_start_actual
                 
-                # 終了位置 (Overlap含む)
                 z_end_nominal = current_z_frame + chunk_z_len
-                z_end_decode = z_end_nominal + z_overlap_frames
+                z_end_decode = z_end_nominal + req_overlap_frames
                 if z_end_decode > z.shape[2]: z_end_decode = z.shape[2]
                 
-                # デコード実行
+                # デコード
                 z_chunk = z[:, :, z_start_actual : z_end_decode]
                 
                 if z_chunk.shape[2] > 0:
@@ -806,88 +811,90 @@ class SynthesisModule:
                     complex_chunk = spec * torch.exp(1j * phase)
                     chunk_wav = self._istft_finalize(complex_chunk) 
                     
-                    # プリロール部分(フェードイン含む)をカットして、正しい位置の波形を取得
-                    # iSTFT後、理論上のサンプル数でトリミング
+                    # プリロールカット (先頭のフェードイン除去)
                     trim_samples = preroll_offset_frames * hop_length
                     if trim_samples < len(chunk_wav):
                         valid_chunk_wav = chunk_wav[trim_samples:]
                     else:
-                        valid_chunk_wav = chunk_wav # Should not happen unless chunk is tiny
+                        valid_chunk_wav = chunk_wav 
                     
-                    # --- Alignment & Merge ---
                     if full_audio is None:
                         full_audio = valid_chunk_wav
                     else:
-                        # 比較対象: 前の末尾 vs 今回の先頭(プリロールカット済み)
+                        # 比較対象の抽出 (位置合わせ計算用)
                         if prev_tail_overlap is None: prev_ref = full_audio[-expected_overlap_samples:]
                         else: prev_ref = prev_tail_overlap
-                        
                         curr_ref = valid_chunk_wav[:expected_overlap_samples]
+                        
                         valid_overlap_len = min(len(prev_ref), len(curr_ref))
-                        print("valid_overlap_len", valid_overlap_len)
-                        if valid_overlap_len > 1:
-                            # 1. ラグ検出
+                        print(f"valid_overlap_len: {valid_overlap_len}")
+
+                        if valid_overlap_len > 512: 
+                            # 1. ラグ検出 (ズレを計算)
                             delay = self._find_best_time_delay(
                                 prev_ref[-valid_overlap_len:], 
                                 curr_ref[:valid_overlap_len], 
                                 max_shift_samples
                             )
-                            
-                            # 2. 位置合わせ (Corrected Polarity Logic)
-                            # delay > 0: Target is Early (contains extra past). Cut Head.
-                            # delay < 0: Target is Late. Cut Previous Tail.
+                            print(f"delay: {delay}")
                             
                             aligned_wav = valid_chunk_wav
-                            print("delay ",delay)
-                            # --- 修正: 長さチェック付き位置合わせ ---
+                            
+                            # 2. 位置合わせ (トリミング)
+                            # delay > 0: 後続(Target)が進んでいる -> 先頭を削る
                             if delay > 0:
-                                print("delay +")
-                                # Targetが進んでいる -> 先頭を削る
+                                print("delay + (trimming head)")
                                 if delay < len(aligned_wav):
                                     aligned_wav = aligned_wav[delay:]
                                 else:
-                                    print("pass")
-                                    # 遅延が大きすぎて波形がなくなる場合（異常系）
                                     aligned_wav = np.array([])
+
+                            # delay < 0: 後続(Target)が遅れている -> 前の音声(Reference)の末尾を削る
                             elif delay < 0:
-                                # Targetが遅れている -> 前の音声を削る
-                                print("delay -")
+                                print("delay - (trimming prev tail)")
                                 cut_from_prev = -delay
                                 if cut_from_prev < len(full_audio):
                                     full_audio = full_audio[:-cut_from_prev]
                                 else:
-                                    # 前の音声が全部消える場合（異常系）
-                                    print("pass")
                                     full_audio = np.array([])
-
-                            # --- 修正: クロスフェード長の安全計算 ---
+                            
+                            # 3. 単純結合 (重複除去)
+                            # ここでの課題: オーバーラップ区間が二重に再生されないようにする
+                            # full_audio は既に「本来の終了位置 + overlap」まで持っている
+                            # aligned_wav は「本来の開始位置 + overlap」から始まっている
+                            # 重なっている `expected_overlap_samples` 分（あるいは `valid_overlap_len` 分）を削除して繋ぐ必要がある
+                            
+                            # 今回の戦略:
+                            # 「前の音声(full_audio)」を生かし、「新しい音声(aligned_wav)」の重複部分をカットして繋ぐ
+                            # ただし、delay補正ですでに位置はずらされているので注意
+                            
+                            # full_audioの末尾にある「オーバーラップ用のりしろ」の長さ
+                            overlap_to_remove = valid_overlap_len
+                            
                             if len(full_audio) > 0 and len(aligned_wav) > 0:
+                                # full_audio の末尾 overlap_to_remove 分を削除して、そこから aligned_wav を開始させる
+                                # ※ delay補正により、波形レベルでは位相が合っている前提
                                 
-                                # クロスフェードできる長さは、残っている波形の長さ以上にはできない
-                                xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
-                                print("xfade_len", xfade_len)
-                                if xfade_len > 0:
-                                    fade_out = full_audio[-xfade_len:]
-                                    fade_in = aligned_wav[:xfade_len]
-                                    alpha = np.linspace(0, 1, xfade_len)
-                                    blended = fade_out * (1 - alpha) + fade_in * alpha
-                                    
-                                    full_audio = np.concatenate([
-                                        full_audio[:-xfade_len],
-                                        blended,
-                                        aligned_wav[xfade_len:]
-                                    ])
-                                else:
-                                    print("len miss")
-                                    full_audio = np.concatenate([full_audio, aligned_wav])
+                                # full_audio を overlap_to_remove 分だけ戻す（短くする）
+                                # これにより full_audio は「本来の文節終了位置」付近で終わる
+                                cut_point = len(full_audio) - overlap_to_remove
+                                
+                                # 安全策: マイナスにならないように
+                                if cut_point < 0: cut_point = 0
+                                
+                                full_audio = np.concatenate([
+                                    full_audio[:cut_point],
+                                    aligned_wav
+                                ])
                             else:
-                                # どちらかが空になった場合は、残っている方を連結（または何もしない）
                                 full_audio = np.concatenate([full_audio, aligned_wav])
                         else:
-                            print("passed")
+                            # オーバーラップ不足時は単純結合 (ただし重複除去は簡易的に行う)
+                            # ここでは安全のためそのまま繋ぐか、あるいは重複分を削るか。
+                            # 簡易的にそのまま繋ぐ
+                            print("overlap insufficient, concatenating directly")
                             full_audio = np.concatenate([full_audio, valid_chunk_wav])
 
-                    # 次回用に末尾保存
                     prev_tail_overlap = valid_chunk_wav[-expected_overlap_samples:] if len(valid_chunk_wav) > expected_overlap_samples else valid_chunk_wav
 
                 current_ph_idx += count
