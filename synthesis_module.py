@@ -686,7 +686,7 @@ class SynthesisModule:
             pass 
         else:
             best_lag = lagidx # 正の値 (wav2が遅れている -> 左シフトが必要)
-
+        print(best_lag)
         return best_lag
 
     def _apply_phase_shift(self, complex_spec, delay_samples):
@@ -817,23 +817,65 @@ class SynthesisModule:
                 z_chunk = z[:, :, current_z_frame : z_end_decode]
                 
                 if z_chunk.shape[2] > 0:
-                    # デコーダー実行 (spec, phaseの取得)
                     ret = self.model.dec(z_chunk, g=g)
-                    
-                    # 戻り値の解析 (wav, ..., spec, phase)
                     if isinstance(ret, tuple):
-                        spec = ret[-2]
-                        phase = ret[-1]
+                        spec, phase = ret[-2], ret[-1]
                     else:
-                        raise RuntimeError("Decoder did not return spec/phase. This method requires MB-iSTFT-VITS decoder.")
-
+                        raise RuntimeError("Decoder did not return spec/phase.")
+                    
                     complex_chunk = spec * torch.exp(1j * phase)
+                    
+                    if ratio is None:
+                        ratio = complex_chunk.shape[-1] / z_chunk.shape[-1] if z_chunk.shape[-1] > 0 else 1.0
+
+                    actual_z_overlap = max(0, z_chunk.shape[-1] - chunk_z_len)
+                    spec_overlap_len = int(actual_z_overlap * ratio)
                     
                     if full_complex_spec is None:
                         full_complex_spec = complex_chunk
                     else:
-                        full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
-                
+                        if prev_tail_overlap is None: 
+                            prev_ref = full_complex_spec[..., -spec_overlap_len:]
+                        else:
+                            prev_ref = prev_tail_overlap
+                        
+                        curr_ref = complex_chunk[..., :spec_overlap_len]
+                        valid_overlap = min(prev_ref.shape[-1], curr_ref.shape[-1])
+                        
+                        if valid_overlap > 2:
+                            # 1. FFT相互相関による遅延検出 (Cond3)
+                            delay_samples = self._find_best_time_delay(
+                                prev_ref[..., :valid_overlap], 
+                                curr_ref[..., :valid_overlap], 
+                                max_shift_samples
+                            )
+                            
+                            
+                            # 2. 位相シフト補正
+                            if delay_samples != 0:
+                                complex_chunk = self._apply_phase_shift(complex_chunk, delay_samples)
+                                curr_ref = complex_chunk[..., :spec_overlap_len]
+
+                            # 3. OLA
+                            cross_len = min(valid_overlap, complex_chunk.shape[-1])
+                            if cross_len > 0:
+                                alpha = torch.linspace(0.0, 1.0, cross_len).to(self.device).view(1, 1, 1, cross_len)
+                                merged = prev_ref[..., :cross_len] * (1 - alpha) + curr_ref[..., :cross_len] * alpha
+                                full_complex_spec = torch.cat([
+                                    full_complex_spec[..., :-cross_len],
+                                    merged,
+                                    complex_chunk[..., cross_len:]
+                                ], dim=-1)
+                            else:
+                                full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
+                        else:
+                            full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
+                    
+                    next_overlap_spec_len = int(z_overlap_frames * ratio)
+                    if complex_chunk.shape[-1] >= next_overlap_spec_len:
+                        prev_tail_overlap = complex_chunk[..., -next_overlap_spec_len:]
+                    else:
+                        prev_tail_overlap = complex_chunk
 
                 current_ph_idx += count
                 current_z_frame = z_end_nominal 
