@@ -748,10 +748,10 @@ class SynthesisModule:
             return audio
         
 
-    def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=10, max_shift_samples=300, return_debug_data=False):
+    def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=15, max_shift_samples=300, return_debug_data=False):
         """
-        Cond 3: Group Delay Correction with Debugging
-        return_debug_data=True の場合、戻り値は (full_audio, debug_info_list) になります。
+        Cond 3 Fix: Correct Hop Length & Group Delay Correction
+        config.jsonのhop_lengthを強制使用し、位相補正＋単純結合を行います。
         """
         if isinstance(z, np.ndarray): z = torch.from_numpy(z).to(self.device)
         if isinstance(w_ceil, np.ndarray): w_ceil = torch.from_numpy(w_ceil).to(self.device)
@@ -769,11 +769,17 @@ class SynthesisModule:
         current_ph_idx = 0
         current_z_frame = 0
         
-        hop_length = getattr(self.model.dec, 'gen_istft_hop_size', self.hps.data.hop_length)
-        expected_overlap_samples = z_overlap_frames * hop_length
-        preroll_frames = 5
+        # --- 修正: Configから正しいhop_lengthを強制取得 ---
+        hop_length = self.hps.data.hop_length
+        # print(f"DEBUG: Using hop_length={hop_length}") 
         
-        # デバッグ情報格納用
+        # オーバーラップサンプル数
+        expected_overlap_samples = z_overlap_frames * hop_length
+        
+        # プリロール設定
+        preroll_frames = 5 
+        preroll_samples = preroll_frames * hop_length
+        
         debug_info_list = []
 
         with torch.no_grad():
@@ -782,7 +788,7 @@ class SynthesisModule:
                 if len(durations) == 0: continue
                 chunk_z_len = int(torch.sum(durations).item())
                 
-                # Pre-roll Decode
+                # --- Pre-roll Decode ---
                 z_start_nominal = current_z_frame
                 z_start_actual = max(0, current_z_frame - preroll_frames)
                 preroll_offset_frames = z_start_nominal - z_start_actual
@@ -799,8 +805,6 @@ class SynthesisModule:
                     else: raise RuntimeError("Decoder issue")
                     
                     complex_chunk = spec * torch.exp(1j * phase)
-                    
-                    # 1. 補正前の波形 (Temp)
                     temp_wav = self._istft_finalize(complex_chunk) 
                     
                     # プリロール除去 (Temp)
@@ -810,7 +814,7 @@ class SynthesisModule:
                     else:
                         temp_valid_wav = temp_wav
                     
-                    aligned_wav = temp_valid_wav # デフォルト
+                    aligned_wav = temp_valid_wav 
                     delay = 0
                     
                     if full_audio is None:
@@ -822,20 +826,19 @@ class SynthesisModule:
                         curr_ref = temp_valid_wav[:expected_overlap_samples]
                         
                         valid_overlap_len = min(len(prev_ref), len(curr_ref))
-                        print("overlap_len",valid_overlap_len)
-                        if valid_overlap_len > 2:
+                        
+                        # 正しいhop_lengthなら十分な長さ(数千サンプル)があるはず
+                        if valid_overlap_len > 512:
                             # 2. ラグ検出
                             delay = self._find_best_time_delay(
                                 prev_ref[-valid_overlap_len:], 
                                 curr_ref[:valid_overlap_len], 
                                 max_shift_samples
                             )
-                            print("delay",delay)
+                            
                             # 3. 群遅延補正 (スペクトル位相操作)
                             correction_val = -delay
                             corrected_complex = self._apply_group_delay_correction(complex_chunk, correction_val)
-                            
-                            # 4. 補正後の波形生成
                             corrected_wav = self._istft_finalize(corrected_complex)
                             
                             # プリロール除去 (Corrected)
@@ -844,34 +847,28 @@ class SynthesisModule:
                             else:
                                 aligned_wav = corrected_wav
                                 
-                            # デバッグ情報収集
                             if return_debug_data:
                                 debug_item = {
                                     "chunk_id": i_chunk,
                                     "delay": delay,
-                                    # 比較に使った「前の音声の末尾」
                                     "ref_wav": prev_ref[-valid_overlap_len:].copy(),
-                                    # 補正前の「今の音声の先頭」
-                                    "target_original": curr_ref[:valid_overlap_len].copy(),
-                                    # 補正後の「今の音声の先頭」
+                                    "target_original": temp_valid_wav[:valid_overlap_len].copy(),
                                     "target_corrected": aligned_wav[:valid_overlap_len].copy()
                                 }
                                 debug_info_list.append(debug_item)
 
-                            # 5. 結合処理 (重複除去)
-                            # full_audioの末尾 overlap_to_remove 分を削除して繋ぐ
+                            # 結合 (単純連結: 重複部分を削除して繋ぐ)
+                            # full_audioの末尾にある「オーバーラップのりしろ」を削除して、aligned_wavを繋ぐ
                             overlap_to_remove = valid_overlap_len
                             
-                            if len(full_audio) > 0 and len(aligned_wav) > 0:
+                            if len(full_audio) > 0:
                                 cut_point = len(full_audio) - overlap_to_remove
                                 if cut_point < 0: cut_point = 0
-                                print("cut")
                                 full_audio = np.concatenate([full_audio[:cut_point], aligned_wav])
                             else:
-                                print("passedB")
                                 full_audio = np.concatenate([full_audio, aligned_wav])
                         else:
-                            print("passedA")
+                            # オーバーラップ不足時は単純結合
                             full_audio = np.concatenate([full_audio, temp_valid_wav])
 
                     prev_tail_overlap = aligned_wav[-expected_overlap_samples:] if len(aligned_wav) > expected_overlap_samples else aligned_wav
