@@ -751,7 +751,7 @@ class SynthesisModule:
     def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=10, max_shift_samples=300):
         """
         Cond 3 Fix: Dynamic Overlap Calculation (Time-based)
-        ホップ長に依存せず、常に一定時間(0.15秒)のオーバーラップを確保して安定化させます。
+        ホップ長に依存せず、常に一定時間(0.1秒)のオーバーラップを確保して安定化させます。
         """
         if isinstance(z, np.ndarray): z = torch.from_numpy(z).to(self.device)
         if isinstance(w_ceil, np.ndarray): w_ceil = torch.from_numpy(w_ceil).to(self.device)
@@ -770,18 +770,19 @@ class SynthesisModule:
         current_z_frame = 0
         
         # --- 時間ベースの設定 ---
+        # モデル設定からホップ長とサンプリングレートを取得
         hop_length = getattr(self.model.dec, 'gen_istft_hop_size', self.hps.data.hop_length)
         sampling_rate = self.hps.data.sampling_rate
         
-        # 1. オーバーラップ時間: 0.15秒 (サンプル数換算)
+        # 1. オーバーラップ時間: 0.15秒 (十分なのりしろを確保)
         OVERLAP_SEC = 0.15
         expected_overlap_samples = int(sampling_rate * OVERLAP_SEC)
         
-        # 2. 必要なフレーム数 (z_overlap_frames) を逆算
-        # 安全マージンとして +2 フレーム
+        # 2. 必要なフレーム数 (req_overlap_frames) を逆算
+        # (サンプル数 / ホップ長) + マージン
         req_overlap_frames = int(expected_overlap_samples / hop_length) + 2
         
-        # 3. プリロール時間: 0.05秒
+        # 3. プリロール時間: 0.05秒 (フェードイン回避用)
         PREROLL_SEC = 0.05
         preroll_frames = int((sampling_rate * PREROLL_SEC) / hop_length) + 2
 
@@ -797,7 +798,7 @@ class SynthesisModule:
                 z_start_actual = max(0, current_z_frame - preroll_frames)
                 preroll_offset_frames = z_start_nominal - z_start_actual
                 
-                # 終了位置: 動的に計算した req_overlap_frames を使用
+                # 終了位置: 固定フレーム数ではなく、計算した req_overlap_frames を使用
                 z_end_nominal = current_z_frame + chunk_z_len
                 z_end_decode = z_end_nominal + req_overlap_frames
                 if z_end_decode > z.shape[2]: z_end_decode = z.shape[2]
@@ -813,7 +814,7 @@ class SynthesisModule:
                     complex_chunk = spec * torch.exp(1j * phase)
                     chunk_wav = self._istft_finalize(complex_chunk) 
                     
-                    # プリロールカット
+                    # プリロールカット (先頭のフェードイン部分を捨てる)
                     trim_samples = preroll_offset_frames * hop_length
                     if trim_samples < len(chunk_wav):
                         valid_chunk_wav = chunk_wav[trim_samples:]
@@ -830,8 +831,8 @@ class SynthesisModule:
                         
                         valid_overlap_len = min(len(prev_ref), len(curr_ref))
                         print("overlaplen ", valid_overlap_len)
-                        # --- 安全チェック: オーバーラップが短すぎる場合は位置合わせをスキップ ---
-                        if valid_overlap_len > 1024: 
+                        # オーバーラップが十分にある場合のみ位置合わせを行う
+                        if valid_overlap_len > 512: 
                             # ラグ検出
                             delay = self._find_best_time_delay(
                                 prev_ref[-valid_overlap_len:], 
@@ -840,9 +841,8 @@ class SynthesisModule:
                             )
                             
                             aligned_wav = valid_chunk_wav
-                            
-                            # 位置合わせ
                             print("delay ", delay)
+                            # 位置合わせ (トリミング)
                             if delay > 0:
                                 if delay < len(aligned_wav):
                                     aligned_wav = aligned_wav[delay:]
@@ -854,24 +854,30 @@ class SynthesisModule:
                                 else: full_audio = np.array([])
                             
                             # 安全なクロスフェード長の計算
-                            xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
-                            
-                            if xfade_len > 0:
-                                fade_out = full_audio[-xfade_len:]
-                                fade_in = aligned_wav[:xfade_len]
-                                alpha = np.linspace(0, 1, xfade_len)
-                                blended = fade_out * (1 - alpha) + fade_in * alpha
+                            # 配列が空でないことを確認してからminをとる
+                            if len(full_audio) > 0 and len(aligned_wav) > 0:
+                                xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
                                 
-                                full_audio = np.concatenate([
-                                    full_audio[:-xfade_len],
-                                    blended,
-                                    aligned_wav[xfade_len:]
-                                ])
+                                if xfade_len > 0:
+                                    fade_out = full_audio[-xfade_len:]
+                                    fade_in = aligned_wav[:xfade_len]
+                                    alpha = np.linspace(0, 1, xfade_len)
+                                    blended = fade_out * (1 - alpha) + fade_in * alpha
+                                    
+                                    full_audio = np.concatenate([
+                                        full_audio[:-xfade_len],
+                                        blended,
+                                        aligned_wav[xfade_len:]
+                                    ])
+                                else:
+                                    print("passedA")
+                                    full_audio = np.concatenate([full_audio, aligned_wav])
                             else:
+                                print("passedB")
                                 full_audio = np.concatenate([full_audio, aligned_wav])
                         else:
-                            # オーバーラップ不足時は単純結合 (安全策)
                             print("passed")
+                            # オーバーラップ不足時は単純結合 (安全策)
                             full_audio = np.concatenate([full_audio, valid_chunk_wav])
 
                     prev_tail_overlap = valid_chunk_wav[-expected_overlap_samples:] if len(valid_chunk_wav) > expected_overlap_samples else valid_chunk_wav
