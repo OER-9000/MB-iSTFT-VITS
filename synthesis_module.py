@@ -853,7 +853,7 @@ class SynthesisModule:
                             
                             # full_audioの末尾 overlap_len と aligned_wavの先頭 overlap_len を混ぜる
                             xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
-                            print("xfade_len ",xfade_len)
+                            print("xfade_len ", xfade_len)
                             if xfade_len > 0:
                                 fade_out = full_audio[-xfade_len:]
                                 fade_in = aligned_wav[:xfade_len]
