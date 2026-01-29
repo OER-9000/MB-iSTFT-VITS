@@ -1,4 +1,4 @@
-import os
+"import os
 import re
 import time
 import json
@@ -840,24 +840,29 @@ class SynthesisModule:
                             aligned_wav = valid_chunk_wav
                             print(delay)
                             # --- 修正: 長さチェック付き位置合わせ ---
-                            if delay < 0:
+                            if delay > 0:
+                                print("delay +")
                                 # Targetが進んでいる -> 先頭を削る
                                 if delay < len(aligned_wav):
                                     aligned_wav = aligned_wav[delay:]
                                 else:
+                                    print("pass")
                                     # 遅延が大きすぎて波形がなくなる場合（異常系）
                                     aligned_wav = np.array([])
-                            elif delay > 0:
+                            elif delay < 0:
                                 # Targetが遅れている -> 前の音声を削る
+                                print("delay -")
                                 cut_from_prev = -delay
                                 if cut_from_prev < len(full_audio):
                                     full_audio = full_audio[:-cut_from_prev]
                                 else:
                                     # 前の音声が全部消える場合（異常系）
+                                    print("pass")
                                     full_audio = np.array([])
 
                             # --- 修正: クロスフェード長の安全計算 ---
                             if len(full_audio) > 0 and len(aligned_wav) > 0:
+                                print("len miss")
                                 # クロスフェードできる長さは、残っている波形の長さ以上にはできない
                                 xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
                                 
@@ -976,4 +981,4 @@ class SynthesisModule:
                 print("FAIL")
 
         print(f"Result: {passed}/{len(test_delays)} passed.")
-        return passed == len(test_delays)
+        return passed == len(test_delays)"
