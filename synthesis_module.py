@@ -824,7 +824,7 @@ class SynthesisModule:
                         
                         curr_ref = valid_chunk_wav[:expected_overlap_samples]
                         valid_overlap_len = min(len(prev_ref), len(curr_ref))
-                        
+                        print(valid_overlap_len)
                         if valid_overlap_len > 128:
                             # 1. ラグ検出
                             delay = self._find_best_time_delay(
@@ -863,8 +863,10 @@ class SynthesisModule:
                                     aligned_wav[xfade_len:]
                                 ])
                             else:
+                                print("passed")
                                 full_audio = np.concatenate([full_audio, aligned_wav])
                         else:
+                            print("passed")
                             full_audio = np.concatenate([full_audio, valid_chunk_wav])
 
                     # 次回用に末尾保存
