@@ -781,42 +781,6 @@ class SynthesisModule:
             # --- 3. iSTFTで波形に戻す ---
             audio = self._istft_finalize(full_complex_spec)
             return audio
-
-    def synthesize_cond2_auto(self, raw_text, sid=0, noise_scale=1.0, noise_scale_w=1.0, length_scale=1.0):
-        """
-        [Cond 2: 全自動モード]
-        テキストを受け取り、内部で文節分割・Latent生成・接続合成を一括で行います。
-        """
-        self.model.eval()
-        sid_tensor = torch.LongTensor([int(sid)]).to(self.device)
-
-        # 1. 文節分割
-        bunsetsu_chunks = self._get_bunsetsu_chunks_mecab(raw_text)
-        
-        # 2. 全体ID列作成
-        all_phoneme_ids = []
-        for ph in bunsetsu_chunks:
-            if not ph: continue
-            ids = self._get_text_from_phonemes(ph)
-            all_phoneme_ids.extend(ids.tolist())
-            
-        if not all_phoneme_ids:
-            return np.array([])
-        
-        stn_tst = torch.LongTensor(all_phoneme_ids)
-        
-        with torch.no_grad():
-            x_tst = stn_tst.to(self.device).unsqueeze(0)
-            x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
-            
-            # 3. Latent生成 (z, w, g)
-            z, w_ceil, g = self._get_z_and_phoneme_durations(
-                x_tst, x_tst_lengths, sid_tensor, 
-                noise_scale, noise_scale_w, length_scale
-            )
-            
-            # 4. 接続合成
-            return self.synthesize_cond2_shared(z, w_ceil, g, bunsetsu_chunks)
         
 
     def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=5, max_shift_samples=300):
@@ -853,64 +817,23 @@ class SynthesisModule:
                 z_chunk = z[:, :, current_z_frame : z_end_decode]
                 
                 if z_chunk.shape[2] > 0:
+                    # デコーダー実行 (spec, phaseの取得)
                     ret = self.model.dec(z_chunk, g=g)
+                    
+                    # 戻り値の解析 (wav, ..., spec, phase)
                     if isinstance(ret, tuple):
-                        spec, phase = ret[-2], ret[-1]
+                        spec = ret[-2]
+                        phase = ret[-1]
                     else:
-                        raise RuntimeError("Decoder did not return spec/phase.")
-                    
-                    complex_chunk = spec * torch.exp(1j * phase)
-                    
-                    if ratio is None:
-                        ratio = complex_chunk.shape[-1] / z_chunk.shape[-1] if z_chunk.shape[-1] > 0 else 1.0
+                        raise RuntimeError("Decoder did not return spec/phase. This method requires MB-iSTFT-VITS decoder.")
 
-                    actual_z_overlap = max(0, z_chunk.shape[-1] - chunk_z_len)
-                    spec_overlap_len = int(actual_z_overlap * ratio)
+                    complex_chunk = spec * torch.exp(1j * phase)
                     
                     if full_complex_spec is None:
                         full_complex_spec = complex_chunk
                     else:
-                        if prev_tail_overlap is None: 
-                            prev_ref = full_complex_spec[..., -spec_overlap_len:]
-                        else:
-                            prev_ref = prev_tail_overlap
-                        
-                        curr_ref = complex_chunk[..., :spec_overlap_len]
-                        valid_overlap = min(prev_ref.shape[-1], curr_ref.shape[-1])
-                        
-                        if valid_overlap > 2:
-                            # 1. FFT相互相関による遅延検出 (Cond3)
-                            delay_samples = self._find_best_time_delay(
-                                prev_ref[..., :valid_overlap], 
-                                curr_ref[..., :valid_overlap], 
-                                max_shift_samples
-                            )
-                            
-                            # 2. 位相シフト補正
-                            if delay_samples != 0:
-                                complex_chunk = self._apply_phase_shift(complex_chunk, delay_samples)
-                                curr_ref = complex_chunk[..., :spec_overlap_len]
-
-                            # 3. OLA
-                            cross_len = min(valid_overlap, complex_chunk.shape[-1])
-                            if cross_len > 0:
-                                alpha = torch.linspace(0.0, 1.0, cross_len).to(self.device).view(1, 1, 1, cross_len)
-                                merged = prev_ref[..., :cross_len] * (1 - alpha) + curr_ref[..., :cross_len] * alpha
-                                full_complex_spec = torch.cat([
-                                    full_complex_spec[..., :-cross_len],
-                                    merged,
-                                    complex_chunk[..., cross_len:]
-                                ], dim=-1)
-                            else:
-                                full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
-                        else:
-                            full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
-                    
-                    next_overlap_spec_len = int(z_overlap_frames * ratio)
-                    if complex_chunk.shape[-1] >= next_overlap_spec_len:
-                        prev_tail_overlap = complex_chunk[..., -next_overlap_spec_len:]
-                    else:
-                        prev_tail_overlap = complex_chunk
+                        full_complex_spec = torch.cat([full_complex_spec, complex_chunk], dim=-1)
+                
 
                 current_ph_idx += count
                 current_z_frame = z_end_nominal 
