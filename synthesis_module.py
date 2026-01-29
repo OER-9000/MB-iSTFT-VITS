@@ -643,7 +643,7 @@ class SynthesisModule:
             
         # 修正: 検証結果に基づき符号を反転させる (または定義を合わせる)
         # 前回の検証で -10 だったものが 10 になるようにする
-        return -lag
+        return lag
 
     def _apply_group_delay_correction(self, complex_spec, delay_samples):
         """
