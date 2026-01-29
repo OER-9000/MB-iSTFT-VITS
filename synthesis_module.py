@@ -981,4 +981,4 @@ class SynthesisModule:
                 print("FAIL")
 
         print(f"Result: {passed}/{len(test_delays)} passed.")
-        return passed == len(test_delays)"
+        return passed == len(test_delays)
