@@ -826,9 +826,9 @@ class SynthesisModule:
                         
                         curr_ref = valid_chunk_wav[:expected_overlap_samples]
                         valid_overlap_len = min(len(prev_ref), len(curr_ref))
-                        
+                        print("valid overlap len ",valid_overlap_len)
                         # ラグ検出可能な最低限の長さをチェック (例: 512サンプル)
-                        if valid_overlap_len > 512:
+                        if valid_overlap_len > 3:
                             # 1. ラグ検出
                             delay = self._find_best_time_delay(
                                 prev_ref[-valid_overlap_len:], 
@@ -838,7 +838,7 @@ class SynthesisModule:
                             
                             # 2. 位置合わせ (トリミング)
                             aligned_wav = valid_chunk_wav
-                            
+                            print("delay ", delay)
                             if delay > 0:
                                 # Targetが進んでいる -> 先頭を削る
                                 if delay < len(aligned_wav):
@@ -866,8 +866,10 @@ class SynthesisModule:
                                     aligned_wav
                                 ])
                             else:
+                                print("len_miss")
                                 full_audio = np.concatenate([full_audio, aligned_wav])
                         else:
+                            print("passed")
                             # オーバーラップ不足時は単純結合
                             full_audio = np.concatenate([full_audio, valid_chunk_wav])
 
