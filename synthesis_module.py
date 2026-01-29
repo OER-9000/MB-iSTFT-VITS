@@ -635,12 +635,15 @@ class SynthesisModule:
         
         lagidx = np.argmax(xcor * mask)
         
+        lag = 0
         if lagidx > fft_size // 2:
-            # 負のラグ (wav_tarが進んでいる)
-            return lagidx - fft_size
+            lag = lagidx - fft_size 
         else:
-            # 正のラグ (wav_tarが遅れている)
-            return lagidx
+            lag = lagidx
+            
+        # 修正: 検証結果に基づき符号を反転させる (または定義を合わせる)
+        # 前回の検証で -10 だったものが 10 になるようにする
+        return -lag
 
     def _apply_group_delay_correction(self, complex_spec, delay_samples):
         """
