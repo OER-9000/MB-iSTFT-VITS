@@ -839,31 +839,43 @@ class SynthesisModule:
                             
                             aligned_wav = valid_chunk_wav
                             print(delay)
-                            if delay < 0:
-                                # Targetが進んでいる分をカットして合わせる
+                            # --- 修正: 長さチェック付き位置合わせ ---
+                            if delay > 0:
+                                # Targetが進んでいる -> 先頭を削る
                                 if delay < len(aligned_wav):
                                     aligned_wav = aligned_wav[delay:]
-                            elif delay > 0:
-                                # Targetが遅れている -> 前の音声を削ってタイミングを合わせる
+                                else:
+                                    # 遅延が大きすぎて波形がなくなる場合（異常系）
+                                    aligned_wav = np.array([])
+                            elif delay < 0:
+                                # Targetが遅れている -> 前の音声を削る
                                 cut_from_prev = -delay
                                 if cut_from_prev < len(full_audio):
                                     full_audio = full_audio[:-cut_from_prev]
-                            
-                            # 3. クロスフェード
-                            xfade_len = min(valid_overlap_len, len(aligned_wav), 512)
-                            if xfade_len > 0:
-                                fade_out = full_audio[-xfade_len:]
-                                fade_in = aligned_wav[:xfade_len]
-                                alpha = np.linspace(0, 1, xfade_len)
-                                blended = fade_out * (1 - alpha) + fade_in * alpha
+                                else:
+                                    # 前の音声が全部消える場合（異常系）
+                                    full_audio = np.array([])
+
+                            # --- 修正: クロスフェード長の安全計算 ---
+                            if len(full_audio) > 0 and len(aligned_wav) > 0:
+                                # クロスフェードできる長さは、残っている波形の長さ以上にはできない
+                                xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
                                 
-                                full_audio = np.concatenate([
-                                    full_audio[:-xfade_len],
-                                    blended,
-                                    aligned_wav[xfade_len:]
-                                ])
+                                if xfade_len > 0:
+                                    fade_out = full_audio[-xfade_len:]
+                                    fade_in = aligned_wav[:xfade_len]
+                                    alpha = np.linspace(0, 1, xfade_len)
+                                    blended = fade_out * (1 - alpha) + fade_in * alpha
+                                    
+                                    full_audio = np.concatenate([
+                                        full_audio[:-xfade_len],
+                                        blended,
+                                        aligned_wav[xfade_len:]
+                                    ])
+                                else:
+                                    full_audio = np.concatenate([full_audio, aligned_wav])
                             else:
-                                print("passed")
+                                # どちらかが空になった場合は、残っている方を連結（または何もしない）
                                 full_audio = np.concatenate([full_audio, aligned_wav])
                         else:
                             print("passed")
