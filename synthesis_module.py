@@ -830,7 +830,7 @@ class SynthesisModule:
                                 curr_ref[:valid_overlap_len], 
                                 max_shift_samples
                             )
-                            
+                            print("delay",delay)
                             # 3. 群遅延補正 (スペクトル位相操作)
                             correction_val = -delay
                             corrected_complex = self._apply_group_delay_correction(complex_chunk, correction_val)
@@ -865,10 +865,13 @@ class SynthesisModule:
                             if len(full_audio) > 0 and len(aligned_wav) > 0:
                                 cut_point = len(full_audio) - overlap_to_remove
                                 if cut_point < 0: cut_point = 0
+                                print("cut")
                                 full_audio = np.concatenate([full_audio[:cut_point], aligned_wav])
                             else:
+                                print("passedB")
                                 full_audio = np.concatenate([full_audio, aligned_wav])
                         else:
+                            print("passedA")
                             full_audio = np.concatenate([full_audio, temp_valid_wav])
 
                     prev_tail_overlap = aligned_wav[-expected_overlap_samples:] if len(aligned_wav) > expected_overlap_samples else aligned_wav
