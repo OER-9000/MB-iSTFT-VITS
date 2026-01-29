@@ -748,13 +748,10 @@ class SynthesisModule:
             return audio
         
 
-    def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=10, max_shift_samples=300):
+    def synthesize_cond3_shared(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=10, max_shift_samples=300, return_debug_segments=False):
         """
-        Cond 3: Group Delay Correction with Pre-roll
-        1. プリロール付きでデコード (iSTFT)
-        2. ラグ検出
-        3. 群遅延補正 (スペクトル位相操作)
-        4. 再度 iSTFT -> プリロールカット -> クロスフェード結合
+        Cond 3: Group Delay Correction with Debug Output
+        return_debug_segments=True の場合、(結合音声, セグメントのリスト) を返します。
         """
         if isinstance(z, np.ndarray): z = torch.from_numpy(z).to(self.device)
         if isinstance(w_ceil, np.ndarray): w_ceil = torch.from_numpy(w_ceil).to(self.device)
@@ -774,17 +771,18 @@ class SynthesisModule:
         
         hop_length = getattr(self.model.dec, 'gen_istft_hop_size', self.hps.data.hop_length)
         expected_overlap_samples = z_overlap_frames * hop_length
-        
-        # プリロール設定
         preroll_frames = 5 
         
+        # デバッグ用リスト
+        debug_segments = []
+
         with torch.no_grad():
             for count in chunk_counts:
                 durations = w_ceil_flat[current_ph_idx : current_ph_idx + count]
                 if len(durations) == 0: continue
                 chunk_z_len = int(torch.sum(durations).item())
                 
-                # --- Pre-roll Decode ---
+                # Pre-roll Decode
                 z_start_nominal = current_z_frame
                 z_start_actual = max(0, current_z_frame - preroll_frames)
                 preroll_offset_frames = z_start_nominal - z_start_actual
@@ -802,19 +800,22 @@ class SynthesisModule:
                     
                     complex_chunk = spec * torch.exp(1j * phase)
                     
-                    # 1. 一時的に波形化してラグ検出
+                    # 1. 一時的に波形化
                     temp_wav = self._istft_finalize(complex_chunk) 
                     
-                    # プリロール除去後の波形（仮）
+                    # プリロール除去 (仮)
                     trim_samples = preroll_offset_frames * hop_length
                     if trim_samples < len(temp_wav):
                         temp_valid_wav = temp_wav[trim_samples:]
                     else:
                         temp_valid_wav = temp_wav
                     
+                    segment_to_add = None # 今回結合する波形
+
                     if full_audio is None:
-                        # 初回は補正なしで採用
+                        # 初回
                         full_audio = temp_valid_wav
+                        segment_to_add = temp_valid_wav
                     else:
                         # 比較対象
                         if prev_tail_overlap is None: prev_ref = full_audio[-expected_overlap_samples:]
@@ -824,22 +825,18 @@ class SynthesisModule:
                         valid_overlap_len = min(len(prev_ref), len(curr_ref))
                         
                         if valid_overlap_len > 128:
-                            # 2. ラグ検出
+                            # ラグ検出
                             delay = self._find_best_time_delay(
                                 prev_ref[-valid_overlap_len:], 
                                 curr_ref[:valid_overlap_len], 
                                 max_shift_samples
                             )
                             
-                            print(f"Applying Group Delay: {-delay}") # Targetのズレを打ち消す値を適用
-
-                            # 3. 群遅延補正 (スペクトル領域)
-                            # delay > 0 (Target Early) -> Shift Right (Delay) needed -> -delay (<0)
-                            # delay < 0 (Target Late) -> Shift Left (Advance) needed -> -delay (>0)
+                            # 群遅延補正
                             correction_val = -delay
                             corrected_complex = self._apply_group_delay_correction(complex_chunk, correction_val)
                             
-                            # 4. 再度波形化
+                            # 再度波形化
                             corrected_wav = self._istft_finalize(corrected_complex)
                             
                             # プリロールカット
@@ -847,13 +844,12 @@ class SynthesisModule:
                                 aligned_wav = corrected_wav[trim_samples:]
                             else:
                                 aligned_wav = corrected_wav
-                                
-                            # 5. クロスフェード結合
-                            # 補正済みなので、位置はずらさず、オーバーラップ区間をクロスフェードする
                             
-                            # full_audioの末尾 overlap_len と aligned_wavの先頭 overlap_len を混ぜる
+                            segment_to_add = aligned_wav
+                                
+                            # クロスフェード結合
                             xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
-                            print("xfade_len ", xfade_len)
+                            
                             if xfade_len > 0:
                                 fade_out = full_audio[-xfade_len:]
                                 fade_in = aligned_wav[:xfade_len]
@@ -861,31 +857,32 @@ class SynthesisModule:
                                 blended = fade_out * (1 - alpha) + fade_in * alpha
                                 
                                 full_audio = np.concatenate([
-                                    full_audio[:-xfade_len], # 重複部分除去
+                                    full_audio[:-xfade_len],
                                     blended,
-                                    aligned_wav[xfade_len:]  # 重複部分除去
+                                    aligned_wav[xfade_len:]
                                 ])
                             else:
                                 full_audio = np.concatenate([full_audio, aligned_wav])
 
                         else:
                             # オーバーラップ不足
+                            segment_to_add = temp_valid_wav
                             full_audio = np.concatenate([full_audio, temp_valid_wav])
 
-                    # 次回用末尾 (補正後の波形から取るべきだが、tempでも近似的にはOK。ここではalignedを使う)
-                    # full_audioの末尾はすでに結合されているので、そこから取るのが確実
-                    # または aligned_wav の末尾を取る
-                    if 'aligned_wav' in locals():
-                        target_wav = aligned_wav
-                    else:
-                        target_wav = temp_valid_wav
-                        
-                    prev_tail_overlap = target_wav[-expected_overlap_samples:] if len(target_wav) > expected_overlap_samples else target_wav
+                    # デバッグ用に保存
+                    if return_debug_segments and segment_to_add is not None:
+                        debug_segments.append(segment_to_add)
+
+                    # 次回用末尾
+                    prev_tail_overlap = segment_to_add[-expected_overlap_samples:] if len(segment_to_add) > expected_overlap_samples else segment_to_add
 
                 current_ph_idx += count
                 current_z_frame = z_end_nominal 
                 if current_z_frame >= z.shape[2]: break
 
+            if return_debug_segments:
+                return (np.array([]) if full_audio is None else full_audio), debug_segments
+            
             if full_audio is None: return np.array([])
             return full_audio
         
