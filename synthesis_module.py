@@ -972,3 +972,29 @@ class SynthesisModule:
 
         print(f"Result: {passed}/{len(test_delays)} passed.")
         return passed == len(test_delays)
+
+
+    def check_model_parameters(self):
+        """モデルのパラメータ設定状況を診断する"""
+        print("=== Model Parameter Check ===")
+        
+        # 1. config.json の値
+        config_hop = self.hps.data.hop_length
+        print(f"Config hop_length (hps.data.hop_length): {config_hop}")
+        
+        # 2. モデル内部の値 (あれば)
+        if hasattr(self.model.dec, 'gen_istft_hop_size'):
+            internal_hop = self.model.dec.gen_istft_hop_size
+            print(f"Model internal hop (model.dec.gen_istft_hop_size): {internal_hop}")
+        else:
+            print("Model internal hop: Not found (None)")
+            
+        # 3. サブバンド設定
+        if hasattr(self.model.dec, 'subbands'):
+            print(f"Subbands: {self.model.dec.subbands}")
+        else:
+            print("Subbands: Not found")
+            
+        # 4. 判定
+        if hasattr(self.model.dec, 'gen_istft_hop_size') and config_hop != self.model.dec.gen_istft_hop_size:
+            print("WARNING: Config and Model mismatch! The code was using the Model value.")
