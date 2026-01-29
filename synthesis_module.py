@@ -856,13 +856,24 @@ class SynthesisModule:
                             # 安全なクロスフェード長の計算
                             # 配列が空でないことを確認してからminをとる
                             if len(full_audio) > 0 and len(aligned_wav) > 0:
+                                # クロスフェード長
                                 xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
                                 
                                 if xfade_len > 0:
+                                    # 1. ブレンド部分の作成
+                                    # full_audioの末尾 xfade_len
                                     fade_out = full_audio[-xfade_len:]
+                                    # aligned_wavの先頭 xfade_len
                                     fade_in = aligned_wav[:xfade_len]
+                                    
                                     alpha = np.linspace(0, 1, xfade_len)
                                     blended = fade_out * (1 - alpha) + fade_in * alpha
+                                    
+                                    # 2. 結合
+                                    # [full_audioのブレンド手前まで] + [ブレンド部分] + [aligned_wavのブレンド後から]
+                                    
+                                    # full_audio[:-xfade_len] : 末尾の重複部分を削除
+                                    # aligned_wav[xfade_len:] : 先頭の重複部分を削除
                                     
                                     full_audio = np.concatenate([
                                         full_audio[:-xfade_len],
@@ -870,7 +881,7 @@ class SynthesisModule:
                                         aligned_wav[xfade_len:]
                                     ])
                                 else:
-                                    print("passedA")
+                                    # xfade_lenが0なら単純結合 (通常ここには来ない)
                                     full_audio = np.concatenate([full_audio, aligned_wav])
                             else:
                                 print("passedB")
