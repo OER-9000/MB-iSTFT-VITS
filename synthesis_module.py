@@ -840,14 +840,14 @@ class SynthesisModule:
                             aligned_wav = valid_chunk_wav
                             print(delay)
                             # --- 修正: 長さチェック付き位置合わせ ---
-                            if delay > 0:
+                            if delay < 0:
                                 # Targetが進んでいる -> 先頭を削る
                                 if delay < len(aligned_wav):
                                     aligned_wav = aligned_wav[delay:]
                                 else:
                                     # 遅延が大きすぎて波形がなくなる場合（異常系）
                                     aligned_wav = np.array([])
-                            elif delay < 0:
+                            elif delay > 0:
                                 # Targetが遅れている -> 前の音声を削る
                                 cut_from_prev = -delay
                                 if cut_from_prev < len(full_audio):
