@@ -862,10 +862,10 @@ class SynthesisModule:
 
                             # --- 修正: クロスフェード長の安全計算 ---
                             if len(full_audio) > 0 and len(aligned_wav) > 0:
-                                print("len miss")
+                                
                                 # クロスフェードできる長さは、残っている波形の長さ以上にはできない
                                 xfade_len = min(valid_overlap_len, len(aligned_wav), len(full_audio), 512)
-                                
+                                print("xfade_len", xfade_len)
                                 if xfade_len > 0:
                                     fade_out = full_audio[-xfade_len:]
                                     fade_in = aligned_wav[:xfade_len]
@@ -878,6 +878,7 @@ class SynthesisModule:
                                         aligned_wav[xfade_len:]
                                     ])
                                 else:
+                                    print("len miss")
                                     full_audio = np.concatenate([full_audio, aligned_wav])
                             else:
                                 # どちらかが空になった場合は、残っている方を連結（または何もしない）
