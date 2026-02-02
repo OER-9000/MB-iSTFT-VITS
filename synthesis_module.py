@@ -674,6 +674,40 @@ class SynthesisModule:
         rotator = torch.exp(1j * phase_shift_rad)
         
         return complex_spec * rotator
+    
+    def synthesize_cond1_bunsetsu(self, text, sid=0, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0):
+        """
+        Cond 1: 文節単位単純接続 (Strict分割)
+        文節ごとに個別に推論(infer)を行い、生成された波形を単純に連結します。
+        """
+        sid_tensor = torch.LongTensor([int(sid)]).to(self.device)
+        
+        # 文節分割
+        bunsetsu_chunks = self._get_bunsetsu_chunks_mecab(text)
+        
+        audio_segments = []
+        
+        with torch.no_grad():
+            for ph in bunsetsu_chunks:
+                if not ph: continue
+                
+                # 音素ID列へ変換
+                stn_tst = self._get_text_from_phonemes(ph)
+                x_tst = stn_tst.to(self.device).unsqueeze(0)
+                x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(self.device)
+                
+                # 推論 (各文節ごとに独立して生成)
+                # inferの戻り値は (audio, plot, gate, ...) なので [0][0,0] で波形を取得
+                audio = self.model.infer(
+                    x_tst, x_tst_lengths, sid=sid_tensor, 
+                    noise_scale=noise_scale, noise_scale_w=noise_scale_w, length_scale=length_scale
+                )[0][0, 0].data.cpu().float().numpy()
+                
+                audio_segments.append(audio)
+        
+        if not audio_segments: return np.array([])
+        # 単純結合
+        return np.concatenate(audio_segments)
 
     def synthesize_cond2_shared(self, z, w_ceil, g, bunsetsu_phonemes):
         """
