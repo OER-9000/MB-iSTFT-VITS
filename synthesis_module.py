@@ -279,31 +279,93 @@ class SynthesisModule:
             
         return audio, z
 
+    def _split_text_to_bunsetsu_mecab(self, text):
+        """
+        Splits text into a list of (surface, reading) tuples for each bunsetsu,
+        by parsing the entire input text with MeCab.
+        """
+        node = self.mecab_tagger.parseToNode(text)
+        bunsetsu_chunks = []
+        current_bunsetsu_surface = ""
+        current_bunsetsu_reading = ""
+        
+        while node:
+            if not node.surface or node.surface == "BOS/EOS":
+                node = node.next
+                continue
+            
+            features = node.feature.split(",")
+            reading = features[7] if len(features) > 7 and features[7] != '*' else (features[6] if len(features) > 6 and features[6] != '*' else node.surface)
+            pos1 = features[0]
+            pos2 = features[1]
+            
+            is_independent = False
+            if pos1 in ["名詞", "動詞", "形容詞", "副詞", "連体詞", "接続詞", "感動詞", "接頭詞", "形状詞", "代名詞"]:
+                if pos2 not in ["非自立", "接尾"]:
+                    is_independent = True
+            
+            if is_independent and current_bunsetsu_surface:
+                bunsetsu_chunks.append((current_bunsetsu_surface, current_bunsetsu_reading))
+                current_bunsetsu_surface = ""
+                current_bunsetsu_reading = ""
+            
+            current_bunsetsu_surface += node.surface
+            current_bunsetsu_reading += reading
+            node = node.next
+        
+        if current_bunsetsu_surface:
+            bunsetsu_chunks.append((current_bunsetsu_surface, current_bunsetsu_reading))
+            
+        return bunsetsu_chunks
+
     def _get_phoneme_chunks(self, raw_text):
         """
-        Splits raw text into phoneme chunks, handling tags and punctuation.
-        Uses pyopenjtalk for bunsetsu splitting of normal text parts.
+        Splits raw text into phoneme chunks, using MeCab for bunsetsu splitting and reading extraction.
+        Handles special tokens and punctuation.
         """
-        # 1. Split text roughly by tags and punctuation
         tokens = re.split(r'({cough}|<cough>|\[.*?\]|[、。])', raw_text)
-        
         final_phoneme_chunks = []
+        text_buffer = ""
         
+        def flush_text_buffer():
+            nonlocal text_buffer
+            if not text_buffer: return
+            
+            bunsetsu_list = self._split_text_to_bunsetsu_mecab(text_buffer)
+            
+            for b_surface, b_reading in bunsetsu_list:
+                k = b_reading.replace('ヲ', 'オ')
+                p = self.phonemizer(k)
+                if p.strip():
+                    final_phoneme_chunks.append(p.strip())
+            text_buffer = ""
+
         for token in tokens:
             if not token or token.isspace():
                 continue
-                
-            # A. Punctuation -> Add 'sp' to the last chunk
+            
             if token in ["、", "。"]:
-                if final_phoneme_chunks:
+                if text_buffer:
+                    bunsetsu_list = self._split_text_to_bunsetsu_mecab(text_buffer)
+                    for i, (b_surface, b_reading) in enumerate(bunsetsu_list):
+                        k = b_reading.replace('ヲ', 'オ')
+                        p = self.phonemizer(k)
+                        if p.strip():
+                            if i == len(bunsetsu_list) - 1:
+                                final_phoneme_chunks.append(p.strip() + " sp")
+                            else:
+                                final_phoneme_chunks.append(p.strip())
+                    text_buffer = ""
+                elif final_phoneme_chunks:
                     if not final_phoneme_chunks[-1].endswith(" sp"):
-                        final_phoneme_chunks[-1] += " sp"
+                         final_phoneme_chunks[-1] += " sp"
                 else:
                     final_phoneme_chunks.append("sp")
                 continue
-                
-            # B. Tags like [...] or {cough}
+            
             if (token.startswith("[") and token.endswith("]")) or token in ["{cough}", "<cough>"]:
+                flush_text_buffer()
+                
                 if token.startswith("["):
                     content = token[1:-1]
                     if content:
@@ -315,33 +377,10 @@ class SynthesisModule:
                 else:
                     final_phoneme_chunks.append("<cough>")
                 continue
-            
-            # C. Normal text -> Use pyopenjtalk.run_frontend
-            contexts = pyopenjtalk.run_frontend(token)
-            if not contexts:
-                continue
-
-            current_kana_phrase = ""
-            for c in contexts:
-                # Split by accent phrase for finer granularity.
-                is_new_phrase = False
-                if 'label_info' in c and c['label_info'] and 'a' in c['label_info'] and c['label_info']['a'] and 'a1' in c['label_info']['a']:
-                    is_new_phrase = c['label_info']['a']['a1'] == 1
                 
-                if is_new_phrase and current_kana_phrase:
-                    p = self.phonemizer(current_kana_phrase)
-                    if p.strip():
-                        final_phoneme_chunks.append(p)
-                    current_kana_phrase = ""
-                
-                current_kana_phrase += c['string']
+            text_buffer += token
             
-            # Add the last phrase from the current text token
-            if current_kana_phrase:
-                p = self.phonemizer(current_kana_phrase)
-                if p.strip():
-                    final_phoneme_chunks.append(p)
-
+        flush_text_buffer()
         return final_phoneme_chunks
 
     def prepare_shared_latents(self, raw_text, speaker_id, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0):
