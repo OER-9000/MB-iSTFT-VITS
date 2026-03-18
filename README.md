@@ -11,11 +11,11 @@ The core contribution is the **"Partial Decoding" (部分的デコード)** meth
 
 ### Visuals
 #### Inference Behavior with Partial Decoding
-<img src="./fig/fig1N.pdf" width="100%">
+<img src="./fig/fig1N.png" width="100%">
 *Figure: Inference behavior showing the segmented processing flow (fig1N).*
 
 #### Latency Illustration
-<img src="./fig/fig5D.pdf" width="100%">
+<img src="./fig/fig5D.png" width="100%">
 *Figure: Comparison of latency (fig5D). The vertical axis shows each component (Encoder, Decoder segments, etc.), and the horizontal axis shows time. It illustrates how splitting the decoder process into segments allows for a much earlier start of speech (time-to-first-audio) compared to full decoding.*
 
 ---
