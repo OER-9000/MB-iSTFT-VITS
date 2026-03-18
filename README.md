@@ -1,6 +1,6 @@
 # Low-Latency End-to-End TTS with Partial Decoding (MB-iSTFT-VITS)
 
-This project implements a low-latency end-to-end text-to-speech (TTS) system based on the bachelor's thesis: **"Research on Low-Latency End-to-End Text-to-Speech for Voice Dialogue Systems" (音声対話システム向け低遅延 End-to-end テキスト音声合成に関する研究)**.
+This project implements a low-latency end-to-end text-to-speech (TTS) system based on the  thesis: **"Research on Low-Latency End-to-End Text-to-Speech for Voice Dialogue Systems" (音声対話システム向け低遅延 End-to-end テキスト音声合成に関する研究)**.
 
 The core contribution is the **"Partial Decoding" (部分的デコード)** method applied to iSTFT-VITS. By segmenting the latent representation `z` into smaller units (such as *bunsetsu* or phrases) and decoding them sequentially, we significantly reduce the time-to-first-audio (latency).
 

@@ -80,7 +80,7 @@ venv.bak/
 logs/
 output_wavs_batch/
 testwav/
-fig/
+#fig/
 
 # Large media files
 *.wav
