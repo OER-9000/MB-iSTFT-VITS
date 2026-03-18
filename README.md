@@ -12,11 +12,11 @@ The core contribution is the **"Partial Decoding" (部分的デコード)** meth
 ### Visuals
 #### Inference Behavior with Partial Decoding
 <img src="./fig/fig1N.png" width="50%">
-*Figure: Inference behavior showing the segmented processing flow (fig1N).*
+
 
 #### Latency Illustration
 <img src="./fig/fig5D.png" width="80%">
-*Figure: Comparison of latency (fig5D). The vertical axis shows each component (Encoder, Decoder segments, etc.), and the horizontal axis shows time. It illustrates how splitting the decoder process into segments allows for a much earlier start of speech (time-to-first-audio) compared to full decoding.*
+
 
 ---
 
@@ -74,25 +74,34 @@ python train_latest_fixed.py -c configs/csj_ms_istft_vits_ms.json -m csj_ms_istf
 ```
 
 ### 4. Inference with SynthesisModule
-You can use `synthesis_module.py` for easy inference. It provides a simple class-based interface to load a trained model and synthesize Japanese speech.
+You can use `synthesis_module.py` for easy inference. It provides a simple class-based interface to load a trained model and synthesize Japanese speech using **Partial Decoding**.
+
+#### Streaming Inference (Recommended for Low Latency)
+This method is especially effective in **CPU environments**. By decoding the latent representation in segments (e.g., *bunsetsu*), the system can start playing the first part of the audio while the rest is still being generated.
 
 ```python
 from synthesis_module import SynthesisModule
 import scipy.io.wavfile as wavfile
 
-# Initialize the module (it will load the model into memory)
-config_path = "configs/your_config.json"
-checkpoint_path = "logs/your_model/G_1000.pth"
-module = SynthesisModule(config_path, checkpoint_path)
+# Initialize module
+module = SynthesisModule(config_path="configs/config.json", checkpoint_path="logs/model.pth")
 
-# Synthesize speech
-text = "こんにちは、これはMB-iSTFT-VITSのテストです。"
-speaker_id = 0  # for multi-speaker models
-audio = module.synthesize(text, speaker_id=speaker_id)
-
-# Save to file
-wavfile.write("output.wav", module.sampling_rate, audio)
+# Streaming synthesis (yields chunks sequentially)
+text = "こんにちは、逐次出力のテストです。"
+for i, chunk in enumerate(module.synthesize_streaming(text, speaker_id=0)):
+    # process or play each chunk (np.ndarray)
+    print(f"Received chunk {i}, length: {len(chunk)}")
 ```
+
+#### Comparison of Decoding Methods
+The module supports several "Conditions" for research and optimization:
+
+- **Streaming (`synthesize_streaming`)**: Based on Cond 3, but yields audio as it becomes ready. Best for real-time applications.
+- **Cond 3 (`synthesize_cond3_shared`)**: Partial decoding with overlap-add and time-delay correction. High quality and low latency.
+- **Cond 2 (`synthesize_cond2_shared`)**: Partial decoding by concatenating spectrograms before iSTFT.
+- **Cond 4 (`synthesize_cond4_shared`)**: Full decoding of the entire sentence at once (Topline quality, but highest latency).
+
+In CPU-bound environments, the "Time to First Audio" (latency) is significantly improved using the streaming/partial decoding approach compared to full decoding.
 
 Alternatively, you can check [inference.ipynb](inference.ipynb) for interactive usage.
 
