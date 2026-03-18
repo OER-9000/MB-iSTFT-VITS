@@ -962,6 +962,139 @@ class SynthesisModule:
             
             if full_audio is None: return np.array([])
             return full_audio
+
+
+    def synthesize_streaming(self, text, speaker_id, noise_scale=0.667, noise_scale_w=0.8, length_scale=1.0, z_overlap_frames=15, max_shift_samples=300):
+        """
+        Synthesizes audio from text and yields audio chunks sequentially (streaming).
+        Based on synthesize_cond3_shared logic.
+
+        Args:
+            text (str): Input text (Japanese).
+            speaker_id (int): ID of the speaker.
+            noise_scale (float): Noise scale for text encoder.
+            noise_scale_w (float): Noise scale for duration predictor.
+            length_scale (float): Controls speech speed.
+            z_overlap_frames (int): Number of frames for overlap between chunks.
+            max_shift_samples (int): Maximum samples for time-delay correction.
+        
+        Yields:
+            np.ndarray: Audio chunk (normalized waveform).
+        """
+        # 1. Text to sequences
+        x_tst = _text_to_sequence_custom(text, self.hps)
+        x_tst_lengths = torch.LongTensor([x_tst.size(0)])
+        sid = torch.LongTensor([speaker_id])
+        
+        # 2. Extract Z and Duration (Global encoding for consistent prosody)
+        z, w_ceil, g = self._get_z_and_phoneme_durations(
+            x_tst.unsqueeze(0).to(self.device), 
+            x_tst_lengths.to(self.device), 
+            sid.to(self.device), 
+            noise_scale, noise_scale_w, length_scale
+        )
+        
+        # 3. Get bunsetsu chunks
+        bunsetsu_phonemes = self._get_bunsetsu_chunks_mecab(text)
+        w_ceil_flat = w_ceil.squeeze()
+        chunk_counts = []
+        for ph in bunsetsu_phonemes:
+            if not ph: continue
+            ids = self._get_text_from_phonemes(ph)
+            chunk_counts.append(len(ids))
+
+        # 4. Sequential Decoding Loop
+        prev_tail_overlap = None
+        current_ph_idx = 0
+        current_z_frame = 0
+        hop_length = self.hps.data.hop_length
+        
+        # Overlap setup
+        nominal_overlap_samples = z_overlap_frames * hop_length
+        MIN_OVERLAP_SAMPLES = 512
+        actual_overlap_frames = z_overlap_frames if nominal_overlap_samples >= MIN_OVERLAP_SAMPLES else int(MIN_OVERLAP_SAMPLES / hop_length) + 5
+        expected_overlap_samples = actual_overlap_frames * hop_length
+        
+        preroll_samples = max(512, 5 * hop_length)
+        preroll_frames = int(preroll_samples / hop_length) + 1
+
+        with torch.no_grad():
+            for i_chunk, count in enumerate(chunk_counts):
+                durations = w_ceil_flat[current_ph_idx : current_ph_idx + count]
+                if len(durations) == 0: continue
+                chunk_z_len = int(torch.sum(durations).item())
+                
+                # Pre-roll Decode (to ensure continuous phase/generation)
+                z_start_nominal = current_z_frame
+                z_start_actual = max(0, current_z_frame - preroll_frames)
+                preroll_offset_frames = z_start_nominal - z_start_actual
+                
+                z_end_nominal = current_z_frame + chunk_z_len
+                z_end_decode = min(z_end_nominal + actual_overlap_frames, z.shape[2])
+                
+                z_chunk = z[:, :, z_start_actual : z_end_decode]
+                if z_chunk.shape[2] == 0: continue
+                
+                # Decoder Call
+                ret = self.model.dec(z_chunk, g=g)
+                if isinstance(ret, tuple):
+                    spec, phase = ret[-2], ret[-1]
+                else:
+                    # Support non-tuple return if necessary
+                    continue
+                
+                complex_chunk = spec * torch.exp(1j * phase)
+                temp_wav = self._istft_finalize(complex_chunk) 
+                
+                # Trim preroll (context frames)
+                trim_samples = preroll_offset_frames * hop_length
+                temp_valid_wav = temp_wav[trim_samples:] if trim_samples < len(temp_wav) else temp_wav
+                
+                aligned_wav = temp_valid_wav 
+                
+                if prev_tail_overlap is None:
+                    # First chunk: buffer the tail
+                    if len(aligned_wav) > expected_overlap_samples:
+                        yield aligned_wav[:-expected_overlap_samples]
+                    else:
+                        # Chunk too short, wait for next
+                        pass
+                else:
+                    # Align with previous chunk using cross-correlation
+                    curr_ref = temp_valid_wav[:expected_overlap_samples]
+                    valid_overlap_len = min(len(prev_tail_overlap), len(curr_ref))
+                    
+                    if valid_overlap_len > 256:
+                        delay = self._find_best_time_delay(
+                            prev_tail_overlap[-valid_overlap_len:], 
+                            curr_ref[:valid_overlap_len], 
+                            max_shift_samples
+                        )
+                        
+                        # Apply time-shift correction
+                        if delay > 0:
+                            # Target is leading -> slice front
+                            if delay < len(aligned_wav):
+                                aligned_wav = aligned_wav[delay:]
+                            else:
+                                aligned_wav = np.array([])
+                        # Note: delay < 0 (shrinking previous) is difficult in streaming after yield.
+                        # We prioritize sync for the upcoming segments.
+
+                        # Yield the transition (excluding new tail)
+                        if len(aligned_wav) > expected_overlap_samples:
+                            yield aligned_wav[:-expected_overlap_samples]
+                
+                # Update state for next iteration
+                prev_tail_overlap = aligned_wav[-expected_overlap_samples:] if len(aligned_wav) > expected_overlap_samples else aligned_wav
+                current_ph_idx += count
+                current_z_frame = z_end_nominal 
+                if current_z_frame >= z.shape[2]: break
+
+            # Final tail
+            if prev_tail_overlap is not None and len(prev_tail_overlap) > 0:
+                yield prev_tail_overlap
+        
         
     def synthesize_cond4_shared(self, z, g):
         """
