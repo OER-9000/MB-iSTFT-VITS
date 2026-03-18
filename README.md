@@ -1,5 +1,27 @@
-# Lightweight and High-Fidelity End-to-End Text-to-Speech with Multi-Band Generation and Inverse Short-Time Fourier Transform
+# Low-Latency End-to-End TTS with Partial Decoding (MB-iSTFT-VITS)
+
+This project implements a low-latency end-to-end text-to-speech (TTS) system based on the bachelor's thesis: **"Research on Low-Latency End-to-End Text-to-Speech for Voice Dialogue Systems" (音声対話システム向け低遅延 End-to-end テキスト音声合成に関する研究)**.
+
+The core contribution is the **"Partial Decoding" (部分的デコード)** method applied to iSTFT-VITS. By segmenting the latent representation `z` into smaller units (such as *bunsetsu* or phrases) and decoding them sequentially, we significantly reduce the time-to-first-audio (latency).
+
+### Key Features
+- **Latency Reduction**: Successfully reduced inference latency from approximately **123ms** to **46ms** (approx. 45% reduction).
+- **Seamless Stitching**: Employs overlap-add, cross-correlation for phase alignment, and cross-fading to maintain high audio quality without click noise at segment boundaries.
+- **Architecture**: Based on MB-iSTFT-VITS, which combines the efficiency of multi-band generation and inverse short-time Fourier transform.
+
+### Visuals
+#### Inference Behavior with Partial Decoding
+<img src="./fig/fig1N.pdf" width="100%">
+*Figure: Inference behavior showing the segmented processing flow (fig1N).*
+
+#### Latency Illustration
+<img src="./fig/fig5D.pdf" width="100%">
+*Figure: Comparison of latency (fig5D). The vertical axis shows each component (Encoder, Decoder segments, etc.), and the horizontal axis shows time. It illustrates how splitting the decoder process into segments allows for a much earlier start of speech (time-to-first-audio) compared to full decoding.*
+
+---
+
 ### Masaya Kawamura, Yuma Shirahata, Ryuichi Yamamoto, Kentaro Tachibana
+(Original MB-iSTFT-VITS authors)
 We propose a lightweight end-to-end text-to-speech model using multi-band generation and inverse short-time Fourier transform. Our model is based on VITS, a high-quality end-to-end text-to-speech model, but adopts two changes for more efficient inference: 1) the most computationally expensive component is partially replaced with a simple inverse short-time Fourier transform, and 2) multi-band generation, with fixed or trainable synthesis filters, is used to generate waveforms. Unlike conventional lightweight models, which employ optimization or knowledge distillation separately to train two cascaded components, our method enjoys the full benefits of end-to-end optimization. Experimental results show that our model synthesized speech as natural as that synthesized by VITS, while achieving a real-time factor of 0.066 on an Intel Core i7 CPU, 4.1 times faster than VITS. Moreover, a smaller version of the model significantly outperformed a lightweight baseline model with respect to both naturalness and inference speed. Code and audio samples are available from [https://github.com/MasayaKawamura/MB-iSTFT-VITS](https://github.com/MasayaKawamura/MB-iSTFT-VITS).
 
 You can check the [paper](https://arxiv.org/abs/2210.15975) and [demo page](https://masayakawamura.github.io/Demo_MB-iSTFT-VITS/).
@@ -13,17 +35,23 @@ You can train the iSTFT-VITS, multi-band iSTFT VITS (MB-iSTFT-VITS), and multi-s
 We also provide the [pretrained models](https://drive.google.com/drive/folders/1CKSRFUHMsnOl0jxxJVCeMzyYjaM98aI2?usp=sharing).
 ### 1. Pre-requisites
 
-0. Python >= 3.6
+0. Python >= 3.8
 0. Clone this repository
 0. Install python requirements. Please refer [requirements.txt](requirements.txt)
     1. You may need to install espeak first: `apt-get install espeak`
+    2. For Japanese text processing, install MeCab and UniDic:
+       ```sh
+       pip install mecab-python3 unidic-lite
+       # or if you want to use unidic:
+       # pip install mecab-python3 unidic
+       # python -m unidic download
+       ```
 0. Download datasets
     1. Download and extract the [LJ Speech dataset](https://keithito.com/LJ-Speech-Dataset/), then rename or create a link to the dataset folder: `ln -s /path/to/LJSpeech-1.1/wavs DUMMY1`
 0. Build Monotonic Alignment Search and run preprocessing if you use your own datasets.
 ```sh
 # Cython-version Monotonoic Alignment Search
 cd monotonic_align
-mkdir monotonic_align
 python setup.py build_ext --inplace
 ```
 
@@ -36,13 +64,37 @@ python setup.py build_ext --inplace
 | MS-iSTFT-VITS | ```"subbands": 4,```<br>```"ms_istft_vits": true, ```<br>``` "upsample_rates": [4,4], ``` | ljs_ms_istft_vits.json |
 
 ### 3. Training
-In the case of MB-iSTFT-VITS training, run the following script
+To start training, use `train_latest_fixed.py` (optimized for multi-GPU training):
 ```sh
-python train_latest.py -c configs/ljs_mb_istft_vits.json -m ljs_mb_istft_vits
+# For MB-iSTFT-VITS
+python train_latest_fixed.py -c configs/ljs_mb_istft_vits.json -m ljs_mb_istft_vits
 
+# For Multi-speaker (e.g., CSJ/UUDB)
+python train_latest_fixed.py -c configs/csj_ms_istft_vits_ms.json -m csj_ms_istft_vits_ms
 ```
 
-After the training, you can check inference audio using [inference.ipynb](inference.ipynb)
+### 4. Inference with SynthesisModule
+You can use `synthesis_module.py` for easy inference. It provides a simple class-based interface to load a trained model and synthesize Japanese speech.
+
+```python
+from synthesis_module import SynthesisModule
+import scipy.io.wavfile as wavfile
+
+# Initialize the module (it will load the model into memory)
+config_path = "configs/your_config.json"
+checkpoint_path = "logs/your_model/G_1000.pth"
+module = SynthesisModule(config_path, checkpoint_path)
+
+# Synthesize speech
+text = "こんにちは、これはMB-iSTFT-VITSのテストです。"
+speaker_id = 0  # for multi-speaker models
+audio = module.synthesize(text, speaker_id=speaker_id)
+
+# Save to file
+wavfile.write("output.wav", module.sampling_rate, audio)
+```
+
+Alternatively, you can check [inference.ipynb](inference.ipynb) for interactive usage.
 
 ## References
 - https://github.com/jaywalnut310/vits.git
