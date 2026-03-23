@@ -991,6 +991,114 @@ class SynthesisModule:
         return self._istft_finalize(full_complex_spec)
 
 
+    def synthesize_cond3_first_bunsetsu(self, z, w_ceil, g, bunsetsu_phonemes, z_overlap_frames=15, max_shift_samples=300, return_debug_data=False):
+        """
+        Cond 3: Processes only the first bunsetsu from the shared latents.
+        Since there is only one segment, no stitching logic is applied.
+        """
+        if isinstance(z, np.ndarray): z = torch.from_numpy(z).to(self.device)
+        if isinstance(w_ceil, np.ndarray): w_ceil = torch.from_numpy(w_ceil).to(self.device)
+        if isinstance(g, np.ndarray): g = torch.from_numpy(g).to(self.device)
+
+        w_ceil_flat = w_ceil.squeeze()
+        
+        if not bunsetsu_phonemes:
+            return np.array([]) if not return_debug_data else (np.array([]), [])
+
+        # Get phoneme count for the first bunsetsu
+        first_chunk_phonemes = bunsetsu_phonemes[0]
+        if not first_chunk_phonemes:
+            return np.array([]) if not return_debug_data else (np.array([]), [])
+            
+        ids = self._get_text_from_phonemes(first_chunk_phonemes)
+        first_chunk_count = len(ids)
+
+        with torch.no_grad():
+            # Get durations for the first chunk
+            durations = w_ceil_flat[0 : first_chunk_count]
+            if len(durations) == 0:
+                return np.array([]) if not return_debug_data else (np.array([]), [])
+
+            # Determine the length of z for this chunk
+            z_len = int(torch.sum(durations).item())
+            
+            # Slice the z tensor for the first chunk
+            z_chunk = z[:, :, 0 : z_len]
+            
+            if z_chunk.shape[2] > 0:
+                # Decode the chunk
+                ret = self.model.dec(z_chunk, g=g)
+                if isinstance(ret, tuple):
+                    spec, phase = ret[-2], ret[-1]
+                else:
+                    raise RuntimeError("Decoder did not return spec/phase.")
+                
+                complex_chunk = spec * torch.exp(1j * phase)
+                audio = self._istft_finalize(complex_chunk)
+                
+                if return_debug_data:
+                    return audio, []
+                return audio
+            else:
+                if return_debug_data:
+                    return np.array([]), []
+                return np.array([])
+
+    def synthesize_cond4_first_bunsetsu(self, z, w_ceil, g, bunsetsu_phonemes):
+        """
+        Cond 4 applied to only the first bunsetsu.
+        Decodes the portion of the shared latent 'z' corresponding to the first bunsetsu.
+        Args:
+            z (Tensor): Shared latent variable for the whole text.
+            w_ceil (Tensor): Phoneme durations for the whole text.
+            g (Tensor): Speaker embedding.
+            bunsetsu_phonemes (List[str]): List of phonemized bunsetsu.
+        """
+        # Tensor type and device assurance
+        if isinstance(z, np.ndarray): z = torch.from_numpy(z).to(self.device)
+        if isinstance(w_ceil, np.ndarray): w_ceil = torch.from_numpy(w_ceil).to(self.device)
+        if isinstance(g, np.ndarray): g = torch.from_numpy(g).to(self.device)
+
+        w_ceil_flat = w_ceil.squeeze()
+        
+        if not bunsetsu_phonemes:
+            return np.array([])
+
+        # Get phoneme count for the first bunsetsu
+        first_chunk_phonemes = bunsetsu_phonemes[0]
+        if not first_chunk_phonemes:
+            return np.array([])
+            
+        ids = self._get_text_from_phonemes(first_chunk_phonemes)
+        first_chunk_count = len(ids)
+
+        with torch.no_grad():
+            # Get durations for the first chunk's phonemes
+            durations = w_ceil_flat[0 : first_chunk_count]
+            if len(durations) == 0:
+                return np.array([])
+
+            # Determine the length of z for this chunk
+            z_len = int(torch.sum(durations).item())
+            
+            # Slice the z tensor for the first chunk
+            z_chunk = z[:, :, 0 : z_len]
+            
+            if z_chunk.shape[2] > 0:
+                # Decode the chunk (same as cond4's core logic)
+                ret = self.model.dec(z_chunk, g=g)
+                
+                if isinstance(ret, tuple):
+                    spec, phase = ret[-2], ret[-1]
+                else:
+                    raise RuntimeError("Decoder did not return spec/phase.")
+
+                full_complex_spec = spec * torch.exp(1j * phase)
+                return self._istft_finalize(full_complex_spec)
+            else:
+                return np.array([])
+
+
 
     def verify_delay_estimation(self):
         """
